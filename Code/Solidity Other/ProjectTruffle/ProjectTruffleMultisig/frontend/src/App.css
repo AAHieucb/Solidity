@@ -1,0 +1,13 @@
+.App {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  /* vh là 1% height of viewport */
+}
+.App-main {
+  margin-top: 50px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}

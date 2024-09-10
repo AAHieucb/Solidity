@@ -1,0 +1,107 @@
+Gasless tx
+
+
+
+# Basic
+Cơ chế: Dev tạo contract bth nhưng khi gọi hàm của nó sẽ phải thông qua 1 contract relayer. User chỉ cần sign message chứ k cần thực hiện tx và relayer sẽ xác thực chữ ký của người dùng và thực hiện tx thay cho người dùng. Dev nạp vào contract này 1 lượng tin và nó dùng trả phí hộ user. 
+
+Đây là 1 cách thu hút người dùng mới khi họ k có tiền trả phí gas. Có nhiều giải pháp code với GSN hỗ trợ người dùng thanh toán phí gas bằng 1 loại token khác hoặc trả bằng tiền mặt hoặc dev trả hộ nếu k có ETH.
+Nó sẽ tuân theo mô hình kinh tế. Lượng tiền mà 1 công ty bỏ ra để marketing hay code lớn hơn rất nhiều so với phí gas mà ng dùng trả nên họ sẵn sàng bỏ ra để hút thêm người dùng. Hoặc họ trả hộ xong khi dùng nền tảng, họ sẽ thu bù phí lại bằng cách trừ vào reward các thứ đủ kiểu. 
+
+-> Ta có thể tự code solidity thuần tất cả nhưng sẽ phức tạp. Có 2 cách tận dụng code có sẵn: 
+1) Dùng thư viện có sẵn của Openzeppelin
+2) Dùng solution của bên thứ 3 là OpenGSN
+
+Nếu k dùng meta-tx, người dùng mới sẽ phải đi qua các trang Know Your Customer hoặc Anti Money-Laundering để nạp tiền vào và công khai thông tin cá nhân. Meta-tx phải giải quyết được việc: bảo mật thông tin người dùng k cần lộ gì cả, k mất ethers, áp dụng dễ dàng tùy chọn hàm nào trả phí hộ người dùng, hàm nào không trong phạm vi contract ta dùng.
+Cả 2 đều dùng frontend + contract mà k cần server.
+
+=> Khi áp dụng tính năng này, ta đang biến 1 ứng dụng web3 thành web2, người dùng vào web thao tác mọi thứ mà chả cần trả phí gì cả, khi đó, ta nên để người dùng sign in cho giống 1 úng dụng web2.
+
+-> EIP-2771:
+Là 1 protocol secure dùng cho Native Meta Transaction. Meta transaction là các tx k mất phí mà người dùng chỉ cung thông tin metadata bằng việc ký message. 
+EIP này chính là chuẩn của Ethereum phải tuân theo khi sử dụng meta tx. Nó định nghĩa rõ luồng:
+Tx Signer ---sign và send offchain---> Gas relay ---send và verify request---> trusted forwarder sẽ xác thực chữ ký và thay đổi msg sender ---thực hiện tx---> Recipient Contract là contract có hàm thực sự.
+Recipient Contract có msgsender thực ra là contract forwarder, nên để lấy address của người ký, nó extract từ message người dùng đã ký ra.
+
+
+
+# Dùng Openzeppelin
+Có 1 cơ chế là defender.
+
+
+
+# Dùng của OpenGSN
+Gas Station Network là 1 relayer decentralized. 
+OpenGSN vốn là 1 công ty chuyên cung cấp các giải pháp Ethereum. 
+
+Họ cung sẵn code để làm mọi thứ mà openzeppelin k có sẵn như cho phép người dùng thanh toán tiền fiat để trả phí gas chẳng hạn. Ta có thể custom đủ kiểu, VD trả phí hộ và về sau sẽ thu lại phí trong contract recipient + bonus fee cho dịch vụ
+
+GSNv1 lỗi thời, giờ họ dùng V2, thậm chí đã có v3 rồi.
+
+
+
+# Send gasless tx / Dùng Openzeppelin
+Clone dự án: https://github.com/OpenZeppelin/workshops/tree/master/25-defender-metatx-api
+
+Luồng:
+Đăng ký defender lấy api secret key và team key
+Chạy createRelay.js để lưu thông tin relayerId vào relay.json và relayer key secret lưu vào .env 
+  Sau khi tạo xong có hteer xóa api secret key và team key đi vì ta chỉ cần relayer key secret là dùng được relayer rồi
+npx hardhat compile
+Chạy deploy.js để deploy nó lên mạng goerly với private key ta cung vào. Có thể deploy mạng local nếu muốn bằng cách chạy npx hardhat node để có blockchain local r chạy npx hardhat run --network localhost scripts/deploy.js
+
+***
+Rõ ràng tk của ta k có tiền, sao nó deploy lên mạng goerly được? 
+=> Thực tế, ta đăng ký 1 tk trên defender và sử dụng Defender Relay service. Nó là 1 dịch vụ hỗ trợ khi cần thực hiện tx dựa vào backend script, khi đó ta phải cung private key vào backend rất nguy hiểm. Dịch vụ này giúp ta thực hiện tx thông qua HTTP API mà k cần bảo mật pivkey trong backend. 
+Dịch vụ này cung ra 1 thư viện defender-relay-client, khi ta đăng ký tài khoản trên Defender sẽ nhận về TEAM_API_KEY và TEAM_API_SECRET -> ta dùng thư viện defender-relay-client nhúng vào "Thông tin mạng" + "KEY API" rồi gọi hàm tạo ra 1 cái relayer mới. Bên trong thực tế nó tạo ra 1 contract Relayer mới (ở đây ta lưu thông tin trong relay.json), đồng thời Defender tự tạo 1 private key mới nhét vào 1 secure vault k thể truy cập. Sau đó mọi request API send tới Defender đều gửi transaction thông qua cái Relayer.
+=> Như v Defender đã giúp ta biến việc thực hiện tx ở backend thành 1 lệnh call API, backend k cần lo bảo mật private key nữa. Còn chi phí gas là khoản tiền có trong contract relayer. Do đó ta phải tự cung vào contract này 1 khoản tiền để thanh toán gas. Defender tự động gửi mail báo nếu lượng ETH trong Relayer giảm xuống dưới 0.1ETH.
+
+Điều này đồng nghĩa việc dùng relayer là phải tin tưởng Openzeppelin trong việc tạo private key và save vào secure vault. 
+Defender là 1 ứng dụng chỉ giúp biến call contract thành 1 lời gọi HTTP request, nhưng vô tình giúp ta thực hiện meta transaction luôn vì người dùng sẽ k mất phí nữa.
+Relayer giống như 1 EOA, do đó ta có thẻ tự implement relayer của mình mà k cần dùng của Defender nếu chỉ cần meta tx.
+
+Ở testnet, khi tạo relayer, Openzeppelin tự fund cho ta 1 khoản phí vào relayer để hỗ trợ việc code nên ta mới deploy được contract.
+Sau khi tạo ra relayer được fund, script deploy nó lấy cái tk được fund đó để deploy ra 2 contract: 1 là MinimalForwarder buộc có, 2 là contract thực hiện tx bth của ta là Registry. Do relayer EOA có tiền nên nó mới ok.
+Ta hoàn toàn tạo ra 1 server chứa account relayer thoải mái và toàn quyền kiểm soát thay vì dùng của openzeppelin
+
+API của Openzeppelin còn nh tính năng khác, VD có lệnh call để pause relayer lại,...
+
+Vào web Defender sẽ quản lý được mọi relayer, autotask, api key đang có
+***
+
+Đến bước này là có contract trên mạng, có address relayer và relayer đã deploy 2 contract MinimalForwarder và Register. Thử hỏi bh user thực hiện tx thì gửi signature đi đâu, ta bảo là k cần backend mà. Ta cần tạo ra 1 cái backend mà nhận request có chữ ký của user, rồi dùng relayer để thực hiện call contract hộ user. Defender đã giúp ta làm điều đó với autotask => chạy script createAutotask.js sẽ tạo ra 1 cái autotask mới (trên web) và trả ra autotaskid
+  Cách khác là ta tạo ra trên giao diện ok
+Vào giao diện connect autotask với relayer (connect server api sử dụng tk nào để thực hiện tx đó). Copy url và nhét vào để frontend gọi API thực hiện tx.
+Chạy giao diện và dùng (hạ node v16)
+
+Script signer.js được gọi từ frontend để ký bằng v4, ta k dùng
+
+Code ở build/relay là code đang chạy trong server autotask, ở đây ta có thể custom whitelist lọc các user nào được phép thực hiện free. Để trống thì mọi user đều thực hiện free. Có thể fix rồi chạy script upload.js để update code trên server. Có thể vào fix thẳng trong Defender cũng được
+
+Các script còn lại chỉ dùng để test: 
+Gọi sign.js để thực hiện ký meta tx và lưu request vào file tmp/request.json
+Chạy verify.js để test hàm verify cho data signature trong tmp/request.json
+Chạy invoke.sh để test api với data lấy từ tmp/request.json bằng command line CURL
+Chạy relay.js để test gọi relayer thực hiện tx từ signature của user với thông tin từ tmp/request.json
+  Nó tự gọi relay/index.js để xác thực và execute request. Cái này là hàm test từng bước của contract forwarder. Nó gọi từng hàm verify rồi execute dù trong hàm execute có verify rồi mà.
+Chạy events để in thông tin event sau khi gọi hàm contract
+
+=> Dùng hardhat khá hay ở đây
+Cách ký và xác thực bằng contract
+
+Vô số API nó cung ra: https://docs.openzeppelin.com/defender/relay-api-reference#relay-signer-module
+
+-> Giải thích:
+Đầu tiên user ký tx -> user gửi signature tới 1 server (autotask) -> server dùng 1 account khác được fund để thực hiện tx hộ user -> Để thực hiện hộ, nó check rồi gửi cho contract TrustedForwarder -> contract này sẽ verify rồi mới gọi đến contract thực tế.
+Tại sao gọi là trusted forwarder? Vì ta cắm no trực tiếp trong contract gốc và có trách nhiệm verify, tức contract hiện tại chỉ tin tưởng duy nhất thông tin verify từ contract Forwarder mà thôi nên gọi là TrustedForwarder
+
+Để làm được điều đó, ta chỉ cần nhét ERC2771Context vào contract đó, gắn nó với trusted forwarder vì nó sẽ chỉ tin thông tin verify từ contract đó, rồi gọi như bth, thay thế msg.sender bằng _msgSender. Chuẩn EIP2771 đúng ra chỉ là nói về contract Forwarder này thôi.
+
+Phía giao diện chỉ cần ký rồi gọi API, nhưng ta phải check nếu user có tiền thì thực hiện tx bth, nếu k có đủ tiền thì mới dùng metatx
+
+
+
+# Send gasless tx / Dùng GSNv2
+=> Mất tg: https://www.youtube.com/watch?v=Tb4HKboFmoU
+Docs có chi tiết
+

@@ -1,0 +1,109 @@
+CreateFromScratch
+
+
+
+# Basic
+Các tool như truffle thật ra là nó tạo các tool mới kết hợp với các tool có sẵn tạo thành 1 bộ công cụ đầy đủ để thao tác với file solidity. Vd nó dùng package solc để compile contract nhưng nó giấu cái này ở level thấp hơn, ta có thể tìm thấy solc trong file build json hay config
+
+Ta sẽ k dùng truffle hay hardhat gì hết mà tự dùng các tool thuần với NodeJS để thao tác với solidity full frontend mọi thứ luôn
+
+-> Solidity extension trong VSC có vai trò nhận diện file .sol và compile file đó => ấn CTRL+SHIFT+P or phím tắt F5 ở file .sol muốn compile sau khi cài extension => tự sinh thư mục bin chứa abi và json sau khi compile
+Extension remix còn cho phép kết nối contract với remix website để thao tác với contract => nhưng thế thà dùng mẹ remix luôn
+
+-> Dùng hardhat or dùng chay là ok nhất, truffle khó dùng
+Nếu ta muốn tương tác với contract, khi dùng hardhat thì luôn dùng ethers đi, còn các chỗ khác ta nên dùng web3 cho dễ
+
+-> Lỗi frontend Web3
+Web3 khi cài với react đôi khi nó bị lỗi kiểu k đúng phiên bản. Ở thời điểm hiện tại khi ta tạo app react và thêm web3 vào như bth thì cần: 
+npm remove react-scripts -> vào file package json sửa thành dòng: "react-scripts": "^4.0.3", => npm install -> react-scripts được cài lại là xong
+=> Đề phòng sau này nó bị lỗi thì phiên bản hoạt động tốt là: 
+"react": "^17.0.2",
+"react-dom": "^17.0.2",
+"react-scripts": "^4.0.3",
+"web-vitals": "^2.1.2",
+"web3": "^1.6.1"
+=> Dùng typescript sẽ k có lỗi này nhưng code rối
+
+
+
+# CreateFromScratch
+compile.js có chức năng biên dịch các file solidity thành bytecode
+deploy.js có chức năng triển khai lên mạng lưới ethereum
+
+Ở đây ta sẽ thao tác k dùng extension:
+npm install solc --save => package solc của nodejs cho phép compile file solidity
+Dùng nó trong file compile.js để compile file sol
+
+Ta dùng thêm: npm install fs-extra  => bs các hàm k được hỗ trợ xong fs và dùng được các hàm của fs. K dùng cx được, ở đây ta dùng để tiện hơn trong vc ghi kết quả vào file
+=> Ta lấy output cần 2 file ABI và bytecode. ABI(Application Binary Interface) dùng để xác định hàm nào trong contract được gọi và trả về dữ liệu mong đợi, VD nó lưu kiểu tên hàm là gì, type là gì,.. với từng hàm một. Bytecode là thứ được dùng để triển khai trên mạng ethereum
+
+Để deploy contract lên mạng(testnet) để test, ta phải deploy ABI lên network rồi dùng bytecode dùng để tương tác với contract đã deploy đó bằng API như Web3 chẳng hạn => dùng contract instance để thao tác đc 
+                                 ABI -> deploy -> Ganache
+                                /                /
+contract --> solidity compiler -              Web3
+                               \              /
+                                   Bytecode
+=> Như v để sử dụng abi và bytecode: npm install --save ganache-cli  +  npm install --save web3@1.0.0-beta.26
+
+Để test: npm install --save mocha => phần mềm viết test bằng JS của NodeJS
+Viết test file .test.js
+Cơ chế test: Web3 -> Ganache Provider -> Ganache Local Network => Provider tùy từng loại mạng, ta muốn tương tác với contract của mạng ganache thì hàm provider() của ganache trả ra (do là mạng test), còn ta muốn tương tác với mạng ethereum thì cần sử dụng Provider của tk ví ta để connect bằng bytecode -> sau đó dùng API để tương tác với contract interface
+Chạy: npm mocha để test or nhét vào scripts trong package.json => nó sẽ tự chạy file compile.js trước r chạy các test
+=> Để test được contract thủ công ta phải deploy nó trước lên testnet. Dùng các lệnh test của hardhat hay truffle cũng phải viết script deploy thì khi chạy nó tự khởi tạo và deploy lại lên testchain mỗi lần chạy
+
+Sử dụng API để liên kết với mạng lưới Ethereum như Infura. Bản chất nó như là 1 node trên mạng ethereum, nếu k dùng infura thì phải sử dụng máy tính hiện tại tham gia vào mạng lưới(qua Geth chẳng hạn) sẽ rất tốn
+Cơ chế: Web3 -> Provider(mnemonic account trong ví) -> Infura API -> Infura Node (trong rinkeby network)
+=> InfuraAPI giúp tương tác với chain qua API và cũng giúp bảo mật, phải có infura key mới gọi được api đó.
+
+Phần đuôi link của infura chính là token xác thực tk k đc để lộ ra
+npm install --save truffle-hdwallet-provider@0.0.3 => tool giúp tạo provider của tk ví phía server (nhúng privatekey or mnemonic vào chứ k có metamask) -> code file deploy.js -> chạy file deploy.js (nếu nó in ký tự lạ ra vô tận là do cú pháp sai)
+Ta sử dụng biến môi trường để lưu INFURA_URL và MNEMONIC để bảo mật
+=> Chạy xong thì contract đã được deploy trên rinkeby và ta có thể vào rinkeby.scan để check -> để tương tác, co thể dùng remix chuyển sang rinkeby vì chưa có giao diện
+
+Code frontend react:
+npm install -g create-react-app
+create-react-app hello-frontend
+Phân biệt:                Trang web front end hiển thị
+                           /^                  \ 
+User -> MetaMask -> Provider                  Provider không gắn với ví -> hàm getter SM của Rinkeby
+                       |
+                       v
+                    Rinkeby
+Khi cài metamask extension vào trình duyệt thì nó tự cài web3 vào trình duyệt nên gõ "web3" trong console nó có hiển thị thông tin chứ k phải undefined
+
+cd vào client là hello-frontend -> npm install --save web3@1.0.0-beta.26 => cài web3 ở client để tương tác -> code web.js lấy provider của người dùng
+Tạo file hello.js ở phía client thêm vào address vào abi là thông tin lấy được sau khi deploy lên rinkeby để sử dụng ở phía client
+import 2 cái trên vào front end: web3.js để lấy tk người dùng mà tương tác với blockchain, hello.js có instance của contract để lấy như 1 cái interface chứa các hàm, ta lấy để gọi ra
+
+=> 1 mô hình hoàn hảo là: viết contract; deploy nó trên testnet local và viết test ở network đó; deploy nó trên mạng ethereum lưu instance ở file json trong thư mục frontend; frontend dùng reactjs tương tác với người dùng bằng ví có trong trình duyệt của họ; front end lấy instance của contract bằng file json lưu ở front-end;
+
+
+
+# Tổng kết các mô hình trong "Solidity Other"
+1) (Create from scratch) contract solidity; compile bằng solc export 2 file abi và bytecode; test bằng web3 deploy contract vào blockchain ganache-cli lấy provider của ganache-cli, viết test bằng mocha; deploy lên mạng ethereum bằng web3 với provider là truffle-hdwallet-provider lấy mnemonic của tài khoản và infura url; front-end bằng react.js; front-end tương tác với user thông qua web3 của metamask, provider lấy từ window.web3.currentProvider của user, interface để lấy instance của contract dùng cho front-end là abi.
+=> đầy đủ tiêu chuẩn
+
+2) (Hardhat) => mặc định là cài đủ các plugin cần thiết
+(Create From Scratch) contract solidity; sau khi cài 2 plugins thì compile, deploy lên ethereum, viết test bằng chai và mocha có sẵn hết luôn; khi test ta tương tác bằng biến global ethers để deploy và tương tác vào mạng thử có sẵn của hardhat mà kp xđ provider khi test; Deploy lên mạng ethereum bằng Alchemy api và private key tk của ta;
+=> K đủ, chưa có frontend
+
+(Project with front-end) contract solidity; deploy lên mạng thử và test bằng biến global ethers và chai có sẵn hết r; chỉ deploy lên mạng kiểm thử của hardhat; tương tác thông qua các task lấy instance với ethers; output bytecode, abi, contract address sau khi deploy ta xuất thành 1 file json lưu ở thư mục của front-end; front-end chạy react; front end tương tác với người dùng thông qua ethers + window.ethereum với hardhat network đó, front end lấy instance of contract thông qua 2 file output mà ta lưu vào file frontend sau khi deploy;
+=> k đủ vì chưa deploy lên mạng ethereum
+
+(Sample Project) contract solidity; dùng các task với biến hre; compile và test và deploy đều ở mạng local hardhat điều chỉnh port như trên; 
+=> k có front-end
+
+=> Như v ta vẫn có thể làm đầy đủ tiêu chuẩn bằng cách kết hợp (Project with front-end) và (Create from scratch) thì: contract solidity; compile, deploy và test trên mạng local của hardhat; deploy lên ethereum thông qua private key và API lưu vào file json; front-end dùng reactjs; front-end lấy instance bằng biến ethers và file.json lưu ở front-end, tương tác với người dùng bằng window.ethereum; Nếu muôn tương tác với contract dùng ethers global file js thoải mái thay cho web3.
+
+3) (UseTruffle) 
+(Full GUI project DApps) viết contract solidity; compile truffle có sẵn; deploy lên mạng kiểm thử local lấy ra file json lưu thư mục build chứa abi, address, bytecode; viết test bằng mocha có sẵn của truffle, deploy để test vào mạng test có sẵn của truffle; tạo thủ công file chứa data; front-end là html/javascript/css thuần kết nối với server là lite-server, server này tạo là chứa output json sau khi build và file json tạo thủ công để hiện thị ra lần đầu tiên; tương tác với người dùng qua window.web3 metamask của họ; lấy data chay từ file json tạo thủ công; lấy instance từ file json sau khi build của lite-server; 
+=> có đầy đủ tiêu chuẩn nhưng thủ công quá nhiều
+
+(Truffle + Ganache-CLI + Web3.js) contract solidity; compile và deploy vào local ouput ra json chứa abi và bytecode; tương tác với contract bằng web3 provider là local luôn và lấy instance bằng file json; 
+=> k có front-end
+
+(Full Project Truffle Multisig Wallet) => contract solidity; deploy vào localnet/ropsten; tương tác bằng web3, truffle contract; front-end bằng react riêng; dự án truffle; tương tác với ropsten qua infura; kết nối metamask với localchain và local account;
+
+4) (Dùng Web3) tương tác với contract thông qua web3 với provider là của infura, k gọi transaction nên k cần tk; subscribe sự kiện.
+
+

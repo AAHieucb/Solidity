@@ -1,0 +1,19 @@
+{
+  "dependencies": {
+    "@truffle/contract": "^4.3.38",
+    "ganache-cli": "^6.12.2",
+    "truffle": "^5.4.15"
+  },
+  "name": "useweb3",
+  "version": "1.0.0",
+  "description": "This is for test only",
+  "main": "index.js",
+  "devDependencies": {
+    "mocha": "^8.1.2"
+  },
+  "scripts": {
+    "test": "mocha"
+  },
+  "author": "",
+  "license": "ISC"
+}

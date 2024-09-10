@@ -1,0 +1,75 @@
+# Tool Geth
+Ethereum private network là mạng blockchain private độc lập với mainnet. Thông thường các tổ chức sẽ tạo private blockchain để lưu personal data cho group và bên ngoài k xem đc. Private network cũng dùng trong testing. Private network sẽ free và ta toàn quyền set thời gian minet và các transaction là free mà k tốn tiền như ETH của mainnet
+
+Geth là Go-Ethereum là Ethereum client giúp ta kết nối với blockchain, nó được viết bằng Go. Tương tự eth là client viết bằng C++ và pyethapp là client bằng Python. Ta có thể dùng Geth để run 1 light node or 1 full node của Ethereum blockchain. Lập trình core blockchain chính là lập trình được cái phần mềm tương tự geth này.
+Geth còn được dùng để tạo ra 1 mạng private blockchain dựa trên ethereum blockchain. VD công ty ta muốn có 1 blockchain private thì dùng luôn geth để tạo cũng được. Cái blockchain private ta tạo ra thì phải được tự động set coin theo ý muốn, thời gian đào theo ý muốn, chỉ những người trong tổ chức mới access vào đc.
+
+-> Cài: tải geth https://geth.ethereum.org/downloads/ => cài => cmd => geth để start network và nó tự động liên kết các peer để tải full node
+
+-> Tạo private blockchain
+
+1) Tạo genesis block:
+- Cách 1 thủ công: tạo file json cho block 0. Mỗi blockchain có 1 chain ID, homesteadBlock là phiên bản, gasLimit là lượng gas max cho block -> Powershell -> geth --datadir <link folder lưu blockchain> init <link file json của Genesis block> => cách này bỏ nhé vì file json tự tạo k ổn
+- Cách 2 dùng tool puppeth: khi tải geth, tải kèm với development tool thì sẽ có puppeth là tool tạo private blockchain của geth -> powershell -> cd đến thư mục lưu chain -> puppeth -> điền thông tin: Đặt tên cho chain(k cách, k viết hoa); configure new genesis chọn thuật toán đào; chọn chainId thì chainId chọn bất kỳ chỉ có 1 điều kiện là khác với các chainId đã từng được sử dụng là: 1 mainnet, 2 morden testnet(obsolete), 3 ropsten, 4 rinkeby, 42 Kovan; ngoài ra có thể chọn tài khoản pre-fund đầu tiên và data đính kèm vào genesis block.
+
+Thế là đã có genesis block bằng tool puppeth mà ta kp tạo thủ công bằng file json như cách 1, nhưng nó chưa được export ra thành file json cụ thể -> Manage existing genesis -> export genesis configuration -> đặt tên folder chứa file json để puppeth tự sinh ra. Tool puppeth chỉ có vai trò sinh file json như v, xong r thì ctrl C
+Mở file json ra sẽ có các trường: như chainId, các loại block là vị trí bắt đầu các hardfork của blockchain, trường timestamp là thứ mà EVM chạy sẽ dựa vào nó để xác định độ khó, nếu khoảng thời gian 2 block nhỏ thì độ khó đang rất dễ, cũng là thứ để xác định thứ tự các block; extraData là trường lưu data bổ sung thêm vào genesis block mà ta vừa thêm bên trên; gasLimit là max gas of transaction trong block, là max gas cho 1 block; diffculty là độ khó cho block này, quyết định thời gian đào 1 block; coinbase là address nhận mining reward của block đầu tiên này, nó hiện tại là 0 vì mới tạo genesis chứ chưa mint, khi mine r thì nó sẽ mang địa chỉ của miner; alloc là list các address mà ta pre-fund; number là block number hiện tại; gasUsed là tổng gas của tất cả các transaction trong block; hash of parent block.
+=> Genesis file là nơi chứa các configuration cho cả mạng blockchain mà ta có thể tùy ý set theo ý mình
+
+Lưu ý: Nơi lưu trữ blockchain ta xác định 1 folder, khi blockchain nhận block mới, folder này sẽ lớn dần, đó chính là ta đang lưu full node của blockchain đó. Nếu ta chạy App Geth bth thì nó sẽ tự kết nối với mainnet và lấy các thông tin blockchain về bằng cách kết nối với các peer, ta phải có đủ bộ nhớ và nó sẽ tự động tải về full node vào folder mặc định của user, folder đó là dùng cho main public net.
+
+Phân tích thêm các trường của gensesis block: config là nơi config các properties cho mạng blockchain của ta
+homesteadBlock là version offical stable đầu tiên của Ethereum protocol thay thế cho version trước là Frontier(k qtr), nếu ta dùng các protocol của Ethereum thì set nó là 0
+Có nhiều protocol khác như Byzantium, eip155B, eip158. Để dùng thì ta phải thêm tên protocol làm prefix của block vd eip158Block và set giá trị là 0
+=> Thật ra đó là các đợt hardfork của ethereum. Các đợt hardfork này cung cho ethereum các tính năng mới và tách ra làm 1 chuỗi riêng. Khi ta tạo private blockchain tương tự như ethereum với geth, nếu ta set mặc định hết nó sẽ như ethereum nguyên bản, nhưng do ta muốn có tính năng mới của các đợt hardfork về sau mà ethereum có cơ thì phải thêm các prefix này vào để sử dụng
+alloc là nơi lưu các account mà có fake ether của piv blockchain. VD ta cần sử dụng vài account để test smart contract thì có thể set value cho nó vài giá trị. VD như trong remix nó có sẵn 10 account với các giá trị fake ether có sẵn là 100 đó
+
+2) Bắt đầu chạy node đầu tiên của network từ genesis block đó
+geth --identity <node name> --datadir . init <link tới file json genesis block> => với --datadir xác định folder lưu data của node này(cũng là full node và miner và của private network này luôn vì là người đầu tiên chạy mạng) còn init là xác định nội dung genesis block -> hiện thông tin là đã lưu data của node vào thư mục ...\\geth\\chaindata. Sinh 2 thư mục là geth là nơi lưu data và keystore lưu các accounts và hiện tại trống vì chưa có account gì; có thể thêm tên node với identity 
+
+-> Tạo thử 3 accounts: geth --datadir . account new => --datadir là thư mục lưu data của chain là thư mục hiện tại nên để dấu chấm -> nhập password(tắt unikey) -> có address mới của key và thư mục keystore sinh ra file mới lưu secret key. Đây là thứ ta dùng để ký transaction sau này. Ta có thể share public address nhưng key thì k và nên backup lại key vì mất key là mất tất cả. Phải nhớ cả password là thứ cần dùng để decrypt key -> tương tự có thể tạo nhiều account thoải mái
+
+-> geth --datadir . account list => để list mọi account của node hiện tại, mặc định account đầu tiên sẽ là account nhận mining reward
+
+Cho đến h thì đã có mạng blockchain tuy nhiên nó k hoạt động vì 1 mạng hoạt động khi có ít nhất 1 thợ đào, nếu k có thì k có block mới sinh ra. Ta cần start private node và cho node mine:
+Tạo file startnode.cmd -> geth --networkid <chainid> --mine --minerthreads <số core dùng> --datadir "." --nodiscover --http.port "<8545>" --http.corsdomain "*" --port "<30303>" --nat "any" --http.api <eth,web3,personal,net> --unlock <0,1> --password <./password.sec> => chạy Geth xác định blockchain nào với chainid và --mine để chạy node này như thợ đào. Là thợ đào thì ta có quyền setup đào với bnh thread của CPU, con số ta điền chính là số core mà nó sẽ dùng trên máy tính của ta để đào, càng nhiều core càng đào nhanh để cạnh tranh với các thợ đào khác nhưng quá lớn sẽ dùng hết của máy làm máy đơ; --datadir là xác định nơi lưu dữ liệu dường như lệnh nào cũng có là thư mục hiện tại; --nodiscover là chạy node miner này độc lập, k liên kết với các node khác; http là thứ để xác định rằng node này có dùng rpc endpoint(Remote Procedure Call) là thứ giúp node này kết nối từ xa được với các công cụ khác như metamask. Ta dùng --http.port là port mà rpc lắng nghe mặc định là 8545, khi dùng metamask phải kết nối vào network này vào port này; --port là network này lắng nghe trên cổng nào mặc định là 30303. Tức là metamask kết nối vào network với chainid của network này qua cổng này, sau đó kết nối vào node này qua http.port nx; --http.port là danh sách các domains cho phép cross origin request, nếu k có cái này thì các domain cross origin k thể connect rpc vào node này đc; --nat(Network Address Translation) là công cụ chuyển đổi ip này sang ip khác mặc định là any(k hiểu ý nghĩa của nó lắm); --http.api liệt kê các api dùng được qua rpc này, vd ta cho phép dùng web3 để connect vào node của ta thì phải liệt kê ra; --unlock là liệt kê các account để unlock sử dụng cho việc đào, ta điền vào index của nó ví dụ account số 0; --password vị trí file chứa password để decrypt cái pivkey để sử dụng account này
+-> Chạy file startnode.cmd trên powershell => Nó sẽ bắt đầu set up các thông số theo đúng lệnh ta chạy như unlock account nào, lưu data vào đâu, port nào, chainid là gì và bắt đầu đào từ block đầu tiên đào đi theo thời gian. Ta có thể dừng chain xong chạy lại với startnode.cmd, nó sẽ chạy tiếp cái chain đó chứ k chạy lại từ đầu. Ctr+c từ từ để xem tiến trình mới
+
+Có 1 thông số nx là IPC endpoint opened url=\\.\pipe\geth.ipc => là endpoint mà về sau để connect với node sẽ cần endpoint này.
+
+Trước khi nó đào block mới nó sẽ generate DAG(Directed Acyclic Graph) là thứ cần dùng cho ETHash cho thuật POW. Nó được tự động generate sau mỗi 30000 block, mỗi khoảng thời gian đó gọi là epoch và lần đầu tiên có epoch = 0 và store trong file AppData\ETHash
+Khi ta chạy miner, dù chả có transaction nào nó vẫn cứ đào theo đúng độ khó và các block vẫn được tạo ra và sinh ETH mới, các block k có transaction thì empty thôi
+
+Trong cái startnode.cmd nếu dùng --http sẽ bị lỗi Account unlock with HTTP access is forbidden. 
+--http là cái enable HTTP-RPC server thì cái geth của ta như 1 local server; Còn --allow-insecure-unlock là cho phép insecure account unlock khi access http, phải có nó để tránh lỗi
+
+3) Tương tác với network đang hoạt động bằng JS console
+Mở power shell mới -> geth attach ipc:\\.\pipe\geth.ipc => kết nối vào cái endpoint là đã connect được vào node và ta có thể xem thông số cũng như điều khiển node 
+=> Nó hiện vài thông số để ta xác nhận như coinbase là tk nhận coin đào được, các modules mà node hỗ trợ như ethash là POW, miner là node này đang đào, eth, web3 là hỗ trợ API Web3. Phải đảm bảo là chỉ đang có 1 node geth chạy trên máy. Nếu ta dùng 1 node khác của mạng Ganache thì k sao vì cả network chạy trên 1 cổng khác và node có IPC endpoint khác
+
+Command: 
+- eth.accounts liệt kê các account của node này
+- eth.coinbase account nào đang là account nhận tiền do node này đào
+- eth.getBalance(eth.coinbase) / eth.getBalance(eth.accounts[1]) or eth.getBalance("<gõ address ra>") trả wei
+- web3.fromWei(eth.getBalance(eth.coinbase), "ether") chuyển sang eth => Đây là hàm của thư viện web3 vì như trên ta đã setup cho node này của ta hỗ trợ api eth và cả web3 nx nên ta dùng ở đây đc, ta k cần phải kết nối web3 với node nx mà đã tự kết nối node này r, ta chỉ cần gọi hàm thôi
+- miner.stop() và miner.start(<số threads dùng>) -> thư viện miner cho tương tác với node đào cũng có
+- net.version => Dùng thư viện net
+- personal.unlockAccount(eth.accounts[1],"pass1234",300) / personal.unlockAccount(eth.accounts[2]) => Sẽ yêu cầu nhập mật khẩu và mặc định thời gian mở account là 10p còn ở cách 1 ta set là 300s; personal giúp ta unlock account để sử dụng và unlock chính là vc ta nhập vào passphrase đó. Ta sử dụng metamask cx v là mỗi khi sử dụng phải nhập passphrase vào để unlock cái account đó sử dụng thì mới đào và gửi eth được
+- Gửi eth giữa các account trong node: eth.sendTransaction({from: eth.coinbase, to: eth.accounts[1], value: web3.toWei(10, "ether")}) => Hiển thị mã hash của transaction => sẽ submit transaction vào block mới để đào => khi đào xong thì số dư sẽ được cập nhập
+- personal.newAccount() => tạo account mới cho node hiện tại
+- exit
+- ctr + c để dừng đào ở powershell cũ
+
+Nếu trong config chỉ để type geth thì là kết nối với mainnet
+Ta có thể tạo smartcontract deploy lên private network của ta
+Tương tự ethereum, để ether mới sinh ra trong private blockchain này chỉ có cách là đào or prefund nhé
+
+=> Chi tiết về console: https://geth.ethereum.org/docs/interface/javascript-console
+
+Khi chạy xong network, ta đã có sẵn 1 thợ đào là chính ta và network có 1 node, bản thân ta chính là 1 node chạy EVM bên trong là chương trình geth này. Ta có thể mở rộng hơn bằng cách cho thêm các máy khác chạy như các node khác kết nối vào blockchain này và dần dần mở rộng mạng lưới private blockchain của ta. Còn bh chỉ có 1 mình ta là miner, nếu ta tắt đi thì blockchain sẽ dừng lại k hoạt động trừ khi có 1 ai đó khác đào tiếp. Tương tự ta thích khi nào khởi động thì lại bật thợ đào lên đào tiếp mạng này là đc
+Để 1 node khác connet vào mạng của ta: geth --datadir <link tới nơi lưu chain> --networkid <chainid của network này>
+
+Geth k lưu các param mà ta đã lưu trong private blockchain network nên mỗi lần ta muốn access vào private chain ta sẽ phải chạy lại command từ đầu và tạo ra connect vào genesis file và private network
+Khi chạy cửa số thứ 2 song song: geth attach <link tới geth.ipc> thì 2 cửa sổ full node ban đầu và cửa sổ tương tác với node sẽ kết nối với nhau
+
+

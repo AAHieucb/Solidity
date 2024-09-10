@@ -1,0 +1,236 @@
+Project BKSwap
+
+
+
+# Uniswap V2 (Know nothing)
+Flow: swap 2 token, thêm liquidity và nhận reward, đốt LP token để lấy lại pair đã cung
+
+Dữ liệu của các pool được lưu hết trong contract. Nó tách periphery và core ra riêng là vì core chứa tài sản, contract trong core phải được bảo mật, vì user tạo ra 1 pool phải gửi token vào contract. Còn periphery là router là thứ điều hướng yêu cầu của người dùng và cũng là thứ k cần bảo mật để người dùng tương tác trực tiếp, dễ dàng chỉnh sửa.
+
+Contract dự kiến thực thi function:
+- Swap(trader dùng là chính)
+Caller: cung vào periphery account với set allowance cho pool 1 lượng amount có thể swap; contract này cũng gọi liên tục các hàm swap từ token này đến token khác cho đến khi có được token chỉ định. Mỗi hàm swap nhận vào 1 path, 1 array of exchanges để nó chạy từng cái.
+Router: xác định số lượng tiền cần trade trong mỗi exchange của path. Duyệt path từ đầu đến cuối, với mỗi exchange trong path, nó send input và gọi hàm swap của exchange đó(exchange ở đây là cặp pair). Cứ thế đến khi cặp pair cuối cùng có 1 token là cái mà trader gọi; nếu rút, burn và lấy token gửi cho trader.
+Pair: xác thực core có thể maintain liquidity sau khi swap; xem số token trong các reserves đã có, xem số token ta sẽ nhận được khi input vào 1 lượng token nào đó; gửi output token tới destination => mỗi cặp pair đều phải gửi token cuối đến destination, nếu đổi được luôn thì gửi mẹ cho trader, nếu k thì gửi đến cặp pair tiếp theo để đổi tiếp); cập nhập lại reserve sau khi giao dịch bằng hàm update
+- Add liquidity:
+Caller: cung periphery account và set allowance cho pool 1 lượng để add liquidity; gọi hàm addLiquidity của periphery
+Router: có khả năng tạo cặp pair mới; check nếu cặp pair tồn tại r thì add vào và phải add đúng tỉ lệ; kiểm tra amount hợp lệ, k cho người nào add có vài wei quá nhỏ sẽ ảnh hưởng đến việc tính toán; gọi contract core
+Pair: đào LP token gửi cho caller; gọi hàm update để update reserve khi có người add thanh khoản vào pool có sẵn => trùng với hàm update từng gọi bên hàm swap
+- Remove Liquidity: 
+Caller: cung periphery account với allowance LP token cho sàn để đổi lấy tài sản ta đang giữ bên trong; gọi periphery contract addLiquidity
+Router: gửi LP token tới pair để pair xử lý mà gửi lại cho provider
+Pair: gửi tới địa chỉ cuối lượng token theo tỉ lệ LP được burn. VD: 1000 token A trong pool, 500B và 90LP token là tổng của pool. Provider nào gửi vào 9token để burn-> tức 10%, ta trích 10% tài sản pool cho họ tức 100A, 50B; đốt LP token; lại gọi update => hàm update trùng nhiều nhưng k vấn đề gì
+
+-> Quanh quẩn cũng chỉ vài contract coi là hướng đối tượng khác nhau thì cx chỉ có 3 đối tượng, ta xác định từng đối tượng làm gì trong các function
+Kỹ năng gộp: tất cả các tính năng như nhau ta nên gộp vào 1 hàm và perform với đối số cố định. VD: provider rút liquidity hay trader swap liquidity đều phải thực hiện update -> ta gọi chung 1 hàm và nghĩ xem hàm update chỉ cần đối số là gì
+=> OOP: Viết ra từng chức năng chính và mỗi đối tượng là gì ở chức năng đó
+
+-> Cần hiểu thêm về vài thuật ngữ trong kinh doanh: 
+Net cost là chi phí ròng, chi phí tổng, k cần phải trả thêm thuế VAT hay dịch vụ gì nữa. Nếu có dấu cộng tức là chưa tính. VD: $70++ tức thuế VAT 10%, thuế dịch vụ 5% chưa có trong số.
+Net profit là lợi nhuận ròng: tổng doanh thu sau khi đã trừ đi chi phí cấu thành sản phẩm, dịch vụ và thuế.
+Gross cost hay gross profit tương tự là tổng tiền net cost chưa trừ các phí liên quan
+
+Marginal cost: chi phí biên. Chi phí cần dùng để sản xuất thêm 1 sản phẩm trong kinh doanh. Chi phí biên có dạng chữ U trong kinh doanh, vì những sản phẩm ban đầu sản xuất tốn nhiều chi phí, về sau đã tận dụng được tài nguyên và kỹ thuật sẵn có làm chi phí biên giảm, nhưng sau đó việc tận dụng bị chậm lại và các chi phí biến đổi tăng dần làm đồ thị cứ đi lên.
+=> Trong uniswap, cái này đơn giản là chi phí của 1 đồng token so với đồng khác ở trong pool hay chi phí biên của đồng token0 là reserve1/reserve0
+Avoidable cost: chi phí tránh được là chi phí không phát sinh nếu hoạt động cụ thể k được thực hiện khác với chi phí cố định k thể tránh. Chi phí tránh được được xem như chi phí âm, đôi khi cần sử dụng để đạt được mục tiêu
+Cumulative cost: Chi phí tích lũy là chi phí theo thời gian, được tính bằng chi phí tích lũy của giai đoạn trước cộng chi phí của giai đoạn này. VD: 1 giờ làm tạo 20$ -> sau 1 h thì cumulative cost là 20$, sau 2h thì cumulative cost là 40$.
+=> Trong uniswap, chi phí tích lũy của token0 = chi phí tích lũy gđ trước + timeElapsed*(reserve1/reserve0) vì trong suốt timeElapsed thì đồng token0 có giá là reserve1/reserve0 nên cộng dồn từng khoảnh vào sẽ ra nv
+Average cost: chi phí bình quân có thể là sản phẩm or thời gian. Nếu là sp thì tổng chi phí mọi sản phẩm / số lượng sp. Nếu là thời gian thì tổng cumulative theo thời gian chia đơn vị thời gian khi tính tổng.
+VD: cumulative của coin tăng từ 10 đến 130 trong khoảng block.timestamp là 1000 thì average price là 1000/120
+
+Tỉ lệ ban đầu cung vào pool phải là 1:1 vì nếu khác 1:1 thì bọn kinh doanh chênh lệch giá sẽ vào kiếm lời ngay và ta sẽ lỗ ngay từ lúc cho vào pool
+
+Ta có thể bỏ qua periphery contract mà gọi core contract trực tiếp nhưng như v sẽ phức tạp và có thể mất tiền nếu có lỗi sai. Ta nên tạo 1 cái riêng như router. Router làm nhiệm vụ checking và gọi hàm thực sự xảy ra, điều này rất qtr làm đơn giản hóa logic như 1 cái interface giữa client và SM gốc.
+
+-> Do Uniswap v2 cho phép trao đổi với bất cứ cặp ERC-20 nào nhưng ETH k là ERC-20 và được thao tác với unique mechanism => ta có thể biến ETH thành token ERC20 với WETH là wrapped ether. Cơ chế là gửi contract ETH, nó gửi lại 1 lượng WETH là token ERC20 ngang giá. Ta burn WETH để get ETH lại.
+
+-> Ta fork uniswap chỉ là phần core của ứng dụng là smart contract, ta thao tác trực tiếp sửa đổi core chứ k liên quan tới blockchain hay front end, ta phải tự code front end or copy font end của uniswap và dùng blockchain ethereum.
+
+Trong Uniswap có 3 thành phần chính: Router tiếp nhận yêu cầu từ user; Factory có nhiệm vụ tạo pool; Pool hay Pair là 1 cặp Token.
+Cơ chế: Người dùng gọi muốn swap gọi đến Router -> Router tính toán địa chỉ pool và lượng DAI tương ứng -> gọi đến pool để pool trả lại DAI cho người dùng. 
+Cơ chế: Người dùng addLiquidity với đầu vào là 1 lượng DAI và ETH cho contract Router -> Router check pool DAI và ETH đã tồn tại hay chưa, nếu chưa nó gọi đến Factory để Factory tạo ra Pool DAI-ETH còn có rồi thì thêm 1 lượng DAI-ETH tương ứng vào pool.
+
+Cấu trúc: Uniswap có 2 dự án là core chứa contract Factory, periphery chứa contract Router. 2 contract này ta phải deploy sẵn còn contract Pool được sinh ra sau bởi Factory
+
+Tạo 1 sàn giao dịch: 
+Chức năng: user thêm 1 cặp pair mới, xóa bỏ cặp pair đó đi và nhận lại tiền, thực hiện swap từ coin này sang coin khác -> chỉ có như v
+
+=> hiểu về cơ chế hoạt động, hiểu được cơ chế khi code -> code thực tế, k dựa vào các cái đã có nx r
+
+Thử tự nghĩ ý tưởng: 
+Để tạo cặp pair: người dùng cung địa chỉ contract 2 cặp token, nếu là ETH thì sẽ chỉ 1 token -> cung vào 1 số lượng -> kiểm tra họ thực sự có số lượng đó k -> yêu cầu họ ký xác nhận là allow cho ta -> check họ đã xác nhận thì allow cho contract dùng được bnh số đó của họ đồng thời trừ token của họ đi, nếu là eth thì họ phải gửi cho ta lượng tương ứng. Đi qua Router, check nếu chưa có pool này thì người dùng tự thêm thanh khoản, check đã có pool này thì add vào thôi. Khi đã có và add vào phải gửi cho họ 1 lượng token của sàn bằng tỉ lệ quy ra ETH lượng họ đã đóng góp cho sàn.
+Để người ta swap: người ta cung địa chỉ token muốn lấy, địa chỉ token muốn bỏ -> cung vào số lượng 1 token muốn bỏ -> check họ thực sự có số lượng đó k -> check các pool có cặp này k, nếu có ETH thì check pool ETH có đồng kia k -> check pool có đủ đồng kia k -> yêu cầu họ allow cho ta -> check nếu họ có allow thật đủ 1 lượng >= lượng muốn đổi -> tiến hành trao đổi -> gửi phần tiền trao đổi cho 2 bên -> lấy lãi người kia chia 4 phần -> 1 phần gửi cho contract swap -> 3 phần gửi lại provider -> tính toán lại giá trong pool
+Provider rút tiền: sàn lưu cặp thanh khoản của người nào người nấy riêng vào 1 biến địa chỉ -> người dùng cung index muốn rút cái thứ mấy -> lấy lượng token của sàn họ đang sở hữu -> tính ra lượng ETH tương ứng họ có -> gửi lại họ cặp pair với giá trị tương ứng
+=> vấn đề vẫn còn rất nhiều khi mà chỉ có 1 đồng token và họ có nhiều pool thì sao
+
+Cách tính fee:
+a b -> căn(ab) -> lần cuối add or burn
+a+x ab/(a+x*97.7%) -> căn(ab) + y -> lần add/burn mới nhất
+
+=> [y/(căn(ab)+y)]*(a+x)/x = 0.025% => cung fee vào 1 token nhưng 1 LP token sẽ lấy lượng 2 bên bằng nhau nên mỗi bên chia đôi như này
+=> rút gọn y là được: y = căn(ab)/(4000*a/x+3999) or biến đổi thành giống cái trong whitepaper cx đc
+
+
+
+# BKSwap copy
+-> Vai trò cụ thể:
+Router: Nơi người dùng tương tác trực tiếp với DEX, gọi hàm các contract khác. Router chỉ có 1.
+Factory: Nơi được gọi để tạo ra 1 cặp pair. Factory chỉ có 1 tương ứng với 1 Router
+Pair: Là pool chứa tiền để đổi. Pair có thể có rất nhiều tương ứng với số cặp hiện tại
+
+Quy trình: 
+Add: người dùng add liquidity -> nếu cặp pair đã tồn tại thì add thêm tiền của họ vào cặp pair; nếu cặp pair chưa tồn tại -> tạo cặp pair mới và thêm phần của họ vào
+ => người dùng gửi tới Router -> Router tiến hành check -> nếu có r thì lấy địa chỉ pair đó, gọi hàm add của pair đó phần người dùng muốn thêm vào; nếu chưa có thì gọi Factory hàm create tạo pair mới -> xong vẫn gọi địa chỉ pair mới đó và add phần người dùng vàos
+Remove: người dùng xóa -> xóa phần của họ và trả fee cho họ
+ => người dùng remove -> Router nhận LP token check hợp lệ -> lấy địa chỉ cặp pair đó và gọi burn LP token -> trả lại tiền và fee cho người ta theo đúng tỉ lệ. 
+Swap: người dùng vào swap -> check xem họ sở hữu đủ k và có để mà swap cho họ k -> tính đầu ra cho họ và check-> tiến hành trao đổi
+ => người dùng swap -> Router nhận tiền của họ và check xem có thể swap được k, có đủ tiền trong các pool để swap k -> nếu đủ thì tính đầu ra -> nếu thỏa mãn mong muốn thì lấy địa chỉ các cặp pair liên tiếp pair này gửi cho pair kia-> đến pair cuối gửi cho người nhận
+
+Getter:
+Router: lấy thông tin về factory
+Factory: lưu cặp pair và lấy thông tin được về các cặp pair
+Pair: lấy được số dư hiện tại của Pair
+
+Chức năng addLiquidity:
+Router: Router nhận 2 lượng token cần add, nhận địa chỉ 2 token muốn add; check xem lượng token có người dùng có sở hữu k, gọi đến Factory check xem cặp pair này có chưa; Nếu cặp pair chưa có, Router gọi Factory tạo cặp pair mới; Nếu Pair check amount bằng 0 tức thêm vào lần đầu tiên thì amount trong pair mới là amount người dùng thêm, nếu khác 0 thì tính toán lượng đó, nếu người dùng truyền vào lượng token2 ít hơn thì k lấy; Nếu ng dùng truyền nh hơn thì lấy -> Pair đó gọi hàm add để thêm thanh khoản; gửi khoản thừa của người dùng về lại cho họ
+Factory: lưu danh sách các cặp pair để check xem cặp pair nào đang có hay k; xử lý create cặp pair mới;
+Pair: có hàm add thêm thanh khoản, cập nhập số dư, tạo ra LP token gửi cho lại cho địa chỉ nhận 
+
+Chức năng removeLiquidity:
+Router: Router nhận 2 token muốn remove và lượng LP mà trader gửi vào; check xem họ sở hữu đúng k; gọi hàm burn của Pair; nhận số dư xem có thỏa mãn những gì họ muốn lấy k;
+Factory: k làm gì cả
+Pair: hàm burn của nó sẽ đốt LP token và lấy tỉ lệ đúng các token trong pool gửi cho địa chỉ nhận
+
+Chức năng swap:
+swap có ETH: 
+Router: Nhận được lượng tiền muốn swap và 1 địa chỉ token muốn swap; check họ sở hữu đúng k; với ETH nó quy từ ETH sang WETH để trade; tính đầu ra đúng mong muốn của người swap k, đã trừ fee; gọi hàm swap của pair
+Factory: K làm gì cả
+Pair: có hàm swap sẽ giảm 1 lượng token và tăng 1 lượng theo tỉ lệ
+
+swap k có ETH:
+Router: nhận lượng tiền mong muốn và 2 địa chỉ token muốn swap; check họ sở hữu đúng k; tính ra đầu ra nếu đúng ý họ thì gọi hàm swap của pair
+Factory: k làm gì cả
+Pair: có hàm swap như trên
+
+Các hàm khác:
+Pair có hàm: mintFee để tính fee 0.01% cho chủ sở hữu của pool
+Factory: lấy số lượng pair đang có ở thời điểm hiện tại
+Pair: hàm skim và sync
+
+Các thư viện và interface phụ thêm vào:
+Router: Token WETH, các ultility như lấy địa chỉ, gọi hàm
+Factory: Nothing
+Pair: contract LP token gắn với mỗi pool, contract LP có hàm permit
+
+-> Cơ chế về fee:
+Chỉ tính lượng fee 0.01% mỗi lần được add từ lần thứ 2 or burn. 
+Ta tính lượng fee cả khi add bắt đầu từ lần thứ 2 trở đi: Tại sao? Chú ý add lần thứ 2 trở đi tức là add vào cái pool này tổng thể chứ kp mỗi người. Add lần thứ nhất có tính cx chả ra gì vì chưa có fee gì cả. Add từ lần thứ 2 ta tính lãi. Nên nhớ mỗi lần sinh LP token, toàn bộ tiền trong pool mà mỗi người sở hữu sẽ giảm đi 0.01% -> nếu 1 người mới thêm vào họ sẽ bị lỗ khoản fee này nếu chưa có ai burn or add kể từ sau lần swap cuối cùng. Nên trước khi họ add, ta gọi mintFee để họ kp chịu lỗ gì cả. Là nó check lần add thứ 2 mà chưa có swap gì sẽ k trừ phí gì cả.
+Nhà phát triển chính ra cũng đóng góp vào pool 1 lượng tương đương với lượng LP token kia chứ kp là k đâu. Sự khác biệt khi ta thực hiện lấy 0.01% fee ở mọi lúc so với lấy 0.01% fee chỉ khi mint or burn: Lượng LP token tượng trưng cho tỉ lệ share đang sở hữu trong pool ở cả 2 loại token. Mỗi khi có người swap thì lãi pool có thêm 0.3% về giá trị so với ban đầu cho liquidity provider. Còn sinh LP token mới cho nhà phát triển là mất đi 0.01% ở mỗi người khác. Nếu nhà phát triển lấy 1 phần LP mỗi khi có người swap thì lượng tiền mà nhà phát triển sẽ tăng lên theo lãi kép còn gì. Vì 1 người burn chẳng hạn và họ sở hữu 0.05% lượng vừa thêm. Xong lại 1 người swap thì giá trị pool tăng lên, họ sẽ ăn thêm 0.3% của 0.01% và cứ như v. Do đó nếu swap là lấy luôn thì họ sẽ lãi nhiều hơn vì sinh ra LP token nhanh hơn và lãi cứ tăng nhanh hơn. Còn mỗi lần add, burn thì mới thêm dù vẫn ăn 0.01% nhưng k có lãi kép. Tuy nhiên vì khoản fee quá nhỏ nên k đáng kể để ta làm mỗi lần swap vì phải bù cho phí giao dịch nx
+Mỗi lần add là thêm 1 lượng LP token. Mỗi lần swap thì thay đổi tỉ lệ token và lượng LP token k đổi, vẫn tưng đó rút hết tất cả. Mỗi khi add or burn thì check sự chênh lệch căn k1 và căn k2 để biết có lần swap thêm 0.3% nào k. Nếu có thì tính LP fee để ăn được 0.01% token hiện tại
+
+Cơ chế chi tiết đã gộp hàm, 1 sàn dex giản lược đi rất nhiều:
+Router: constructor nhận địa chỉ factory cố định và đồng WETH riêng; addLiquidity; addLiquidity có ETH; removeLiquidity, removeLiquidity có ETH; swap exact token for token; swap token for exact token; swap exact ETH for token; swap ETH for exact Token; swap token for exact ETH; swap exact token for ETH 
+Factory: constructor nhận địa chỉ lấy fee; createPair;
+Pair: constructor xác định token luôn, gán biến factory luôn(để mỗi lần gọi hàm của factory kp thông qua interface nx); đào fee; add; remove; swap; skim; sync; update;
+
+-> Tìm hiểu sự khác biệt: 
+Ta dùng hàm transfer gọi nhiều lần thì chuyện gì xảy ra? Transaction có được hoàn tác khi chỉ 1 cái cuối k thỏa mãn không => Không. 
+Transaction có độc lập để chờ xác nhận tách rời nhau hay k -> Tức là thời gian chờ có bị cộng dồn k => Không, nhiều lần transfer trong 1 tx thì vẫn là 1 tx thôi, k thể hoàn tác sau khi chuyển tiền dù chỉ tx cuối thât bại. 
+Số dư có được cập nhập ngay khi transaction hoàn thành nhưng transaction cuối chưa hoàn thành k -> Có. 
+Nếu có thì 2 transaction thực hiện lâu bị conflict thì sao. K bị conflict vì tức thời, số dư chỉ cập nhập lâu trong 1 hàm, khi có phát là tức thời
+
+Chú ý rất hay là tính lượng amountIn để có đúng 1 lượng amountOut thì qua các path ta cộng 1 vào mỗi lượng amountIn vì chắc chắn nó sẽ ra biểu thức amountIn là phân số và nếu nó là số thập phân thì sẽ bị lấy tròn thành nguyên -> mặc định làm tròn xuống thì lượng amountOut sẽ k đủ, làm tròn lên thì lượng AmountOut sẽ thừa nhưng ta cần lớn hơn or bằng nên +1 vào coi như làm tròn lên. Price feed yên tâm vì lấy giá ngay trong pool này rồi.
+
+=> Còn tính lương amountOut khi cho vào 1 lượng amountIn thì kiểu gì amountOut cx sẽ là 1 phân số và ta làm tròn xuống là mặc định nên giữ nguyên -> ta cần xác định chuẩn khi mà dùng phân số thì số liệu ta cần nên là làm tròn lên hay xuống
+
+-> Lỗi codesize: trong solidity nó giới hạn kích thước của code trong 1 contract, nếu ta làm quá nhiều thao tác mà bị tràn codesize thì nó k cho deploy lên mainnet. NN là để chống tấn công DDOS, khi 1 request rất nhỏ nhưng lại làm rất nhiều thao tác. Lỗi code size là của 1 contract còn lỗi stack tràn là trong 1 hàm.
+Ngày xưa vấn đề này k đáng lo vì contract sẽ bị giới hạn bởi block gas limit. Nếu tràn gas nó cx tự revert r nhưng bh lượng gas max nó rất lớn, nên để hạn chế mất gas như v họ dùng giới hạn blocksize
+Để tối ưu gas hơn, giảm code size ta có thể: truyền vào hàm struct thay vì truyền vào từng biến; hạn chế tạo biến mới để lưu mà dùng trực tiếp luôn nếu chỉ lấy 1 lần; string message nên cực kỳ ngắn thôi, viết tắt chữ cái đầu r comment ý nghĩa ra thay vì lưu cả câu; remix cũng gợi ý "consider low run value in the optimizer" thực chất là tối ưu bytecode khi 1 function được gọi 200 lần. Nếu thay đổi về 1 tức là cái optimizer sẽ tối ưu mỗi function 1 lần, ta phải chỉnh sửa trong optimizer và điều này làm tăng gas cost nên ít dùng; dùng đúng visibility; k dùng modifier, dùng nhiều modifier ảnh hưởng rất là đáng kể đến kích thước nhé !!! Nếu dùng function sẽ đỡ hơn
+=> 1 contract quá 24KB thì sẽ cần phải xem xét lại cấu trúc đấy
+
+=> Sử dụng library: trong solidity, khi 1 contract gọi hàm của library thì codesize của nó k tính content của library(mặc dù nó vẫn hao hụt như v). Khi dùng lib, thì ta code như đang code trên contract với address(this) chính là contract gọi cái lib đó. Vì mục đích của lib là để cho contract gọi tái sử dụng
+VD: ta dùng 1 hàm payable trong contract gọi hàm trong library thì hàm trong library k đc có payable nhưng các giá trị msg.sender và msg.value nó vẫn là giá trị gửi vào trong contract chứ lib nó k có address
+=> Đây cx là cách hữu hiệu nhất có thể giảm codesize cực đại để tránh lỗi dù sự hao hụt tài nguyên vẫn v nhưng cần thiết cho các dự án lớn. Nhưng ở trong library k có storage var nên k lưu được data mà chỉ gọi hàm. Có 1 cách đó là dùng trong library: struct Data{ <content> } => trong contract ta import cái lib là có thể dùng được cái struct này, ta tạo ra biến storage trong contract là Data data; và gán cho biến data các giá trị storage => khi nào gọi hàm của library trong contract thì truyền thêm biến data nx là xong => các hàm trong library sẽ thêm param (Data memory data,..) như này để dùng.
+
+-> Về oracle: công cụ giúp contract lấy thông tin từ bên ngoài or rộng hơn k chỉ contract mà ứng dụng DApps của ta. Oracle cũng là 1 thứ để ứng dụng những thứ khác vào công nghệ blockchain. Vd áp dụng vào nghành giáo dục, ta tạo 1 DApp cho giáo dục vậy thì dữ liệu thống kê hay mọi thứ lấy từ đâu. Ta k thể lấy từ database được vì như v là k dùng blockchain r => ta phải nhét data vào ứng dụng của ta thông qua Oracle
+Chainlink là 1 mạng lưới oracle phi tập trung, trung gian giữa contract và data bên ngoài. Mỗi lần dùng chainlink là phải mất 1 lượng token LINK. VD khi cần lấy tỉ giá của các đồng coin hiện tại.
+Trong BKSwap ta có thể tự implement vc lấy tỉ giá các đồng coin, dùng sàn của ta như 1 oracle được luôn bằng cách cho thêm 1 hàm public cung tỉ giá của 1 pair. Vì các sàn dex như này tỉ giá thg gần đúng với bên ngoài do bọn kinh doanh chênh giá. Ta deploy 1 contract mới lấy giá trị tỉ giá là được oracle kiểu truyền vào token và amount -> lấy ra bằng bao nhiêu ETH tương ứng
+
+-> Tổng kết dự án này:
+Factory:
+- tạo cặp pair mới: Đơn giản gọi new Pair(token1, token2) đã sắp xếp thứ tự 2 token
+- lấy address cặp pair bất kỳ biết address 2 token: ta lưu vào 1 address=>mapping(address=>uint) và uint trong đó là index của Pair[]. Ta lưu như v vì ta muốn lấy số lượng bao nhiêu pair thì bằng length của Pair[]
+=> 1 cách khá hay thay vì lưu mapping(address=>(mapping(address=>Pair)))
+- xác định địa chỉ nhận fee: truyền vào luôn ở constructor
+Pair:
+- đào fee cho dev mỗi khi add và burn: hàm này so sánh tích 2 lượng token và feeparams để xem kể từ lần cuối cập nhập có ai gửi thêm token gì vào k -> đào thêm LP token gửi vào dev address thôi. Hàm được gọi trước khi gọi add và remove
+- addLiquidity: chỉ là xem tỉ lệ lượng sau khi thêm vào và lượng ban đầu chênh nhau bao nhiêu thì mint thêm LPToken gửi cho user thôi. Phải check xem lượng token1 và 2 thêm vào tỉ lệ ntn so với tỉ lệ hiện tại và LPToken sinh ra sẽ theo token nào cung số lượng nhỏ hơn. 
+- removeLiquidity: check lượng LPToken nhận được thêm. Ưu tiên check bằng balance hơn là truyền tham số cho hàm trong khi có thể lấy được ngay từ balance. Lấy tỉ lệ token1 và token2 trong pool gửi cho user và burn lượng LPToken. Update lại reserve và feeParams
+- swap: tính lượng token nhận được và tính ra phần token còn lại gửi đi cho user. Phần token gửi đi bị giảm 0.3% r mới gửi đi. R update balance
+- skim và sync: cân bằng reserve or rút bớt token thừa 
+Router:
+- addLiquidity: người dùng phải ủy quyền cho contract dùng 1 lượng token r mới gọi hàm -> contract transfer vào địa chỉ cặp pair để gọi addLiquidity của pair để nó gửi lại LPToken cho user. Nếu có ETH phải đổi sang WETH r thao tác
+- removeLiquidity: ủy quyền cho contract dùng lượng LPToken -> contract gửi vào địa chỉ cặp pair r gọi removeLiquidity của Pair thì pair sẽ gửi lại user token tương ứng. Nếu có ETH thì cho Pair gửi lại contract này và xử lý đổi từ WETH sang ETH r gửi lại cho user
+- swapExactTokenForToken: người dùng ủy quyền cho contract dùng 1 lượng token -> contract gửi nó theo đường path và gửi đến cuối -> lấy lượng ở cuối ra gửi cho người dùng
+- swapTokenForExactToken: tính ngược lại lượng token cần cho vào để có lượng token đích -> r so sánh xem user ok k -> nếu được thì chơi. Nếu có ETH phải cho sang WETH và xử lý
+Oracle: lấy lượng ETH còn lại bằng bao nhiêu lượng token truyền vào
+LPToken: ERC20 bình thường nhưng có thêm permit
+WETH: ERC20 bình thường nhưng có thể swapToWETH và swapToETH
+
+Quy trình chung tạo SC:
+Lập sơ đồ kỹ càng comment -> code theo comment -> check lại bằng remix xem chuẩn những gì ta muốn chưa -> chống các thể loại hack như reentrancy,.. -> chỉnh sửa các visibility là public hay internal, các hàm external hay public thì chú ý ai cx gọi được thì có vấn đề gì k -> bỏ tất cả warning cho contract -> tối ưu gas, số lượng biến,..
+
+
+
+# EXP Solidity
+-> Dùng permit của EIP712: dùng trong LP token.
+ERC20 bth: Người dùng làm 2 thao tác là approve cho contract dùng LPtoken của mình + gọi hàm removeLiquidity
+Dùng EIP721: Người dùng chủ động ký lấy bộ signature v r s cho phép contract dùng LP token của mình. Rồi gọi hàm removeLiquidityWithPermit, bên trong nó gọi hàm permit thay thế hàm approve rồi thực hiện tiếp như bth. Như v chỉ cần pay gas 1 lần
+
+-> Dùng WETH thay ETH: WETH là ERC20 có tỉ lệ 1:1 với ETH mà thôi. Có thêm hàm convert to ETH và convert to WETH
+
+-> Hoán vị 2 biến trong solidity nhanh k dùng biến temp: (a,b)=(b,a) là được
+
+-> Cơ chế của swap protocol basic: Dùng công thức toán học k = căn(a1,a2); xem trong docs của Uniswap 
+
+-> Bảo mật khi viết contract:
+Cần chú ý là mọi hàm đều có visibility chuẩn
+
+Nếu 1 hàm public thì ai cũng custom tham số để gọi được nên cần chú ý các đối số truyền vào hàm k đáng tin, có thể là bất cứ cái gì:
+Vd: Hàm public A gọi hàm public B, trước đó nó xử lý rồi truyền vào B: bool result = handle(); B(result); 
+=> Toang ngay vì B là hàm public tức bất cứ ai cũng gọi được nó và truyền vào biến result bất kỳ. Do đó hàm B mà thay đổi state thì rất nguy hiểm vì bất cứ ai cũng đổi tùy ý được.
+
+Fix các lỗi: reentrancy hack, silience warning,..
+Tối ưu gas, tránh tạo nhiều biến mới khi thao tác, thay vì truyền nh biến thì gên gom truyền thành 1 struct
+
+Khi dùng call 1 hàm k tồn tại, bắt buộc phải có fallback, nếu k sẽ k chuyển tiền được. Khi call thất bại trong việc chuyển tiền nó tương tự như send trả ra bool, nếu ta k kiểm tra thì nó vẫn đi tiếp bth sẽ rất nguy hiểm => bất cứ khi nào dùng call chuyển tiền, phải check bool cho nó
+
+-> Cách viết code:
+Tách đúng vai trò với từng class, từng hàm 
+Các phần code được xử lý trước khi gọi hàm nên note lại ở hàm. VD _swap khi được gọi đã check address hợp lệ sẵn r thì nên note lại để k viết nhầm logic bên trong nó nữa
+
+-> Viết code sao cho tối ưu gas nhất có thể. Đôi khi phải đổi logic code để có phí gas rẻ. 
+VD: nếu người dùng cứ swap là mintFee luôn cho dev thì rất phí gas. Ta cứ cộng nó lại rồi khi nào người dùng burn hay add liquidity thì mint 1 thể. Bởi vì chỉ khi mint hay burn thì logic fee cho dev mới thực sự cần thay đổi.
+=> Tức chỉ thay đổi state khi thực sự cần dùng state đó. Chứ gọi hàm update state liên tục xong chả dùng thì rất phí gas.
+
+-> Cơ chế thu phí cho dev
+Đây là 1 cách rất hay để dev ăn phí. Thu ngay từ trong protocol mỗi khi user sử dụng thay vì dùng các hình thức raise vốn hay kêu gọi donate. Đây cũng là các kiếm lời lâu dài, kbh mất, dù fee rất nhỏ nhưng ăn lãi kép của mọi user sẽ rất lời. 
+
+-> Lỗi logic
+2 hàm skim và sync rất quan trọng để tránh protocol bị lock tiền vĩnh viễn kbh lấy được.
+Nhiều protocol khác cũng có cơ chế tương tự để đảm bảo nếu có lỗi gì xảy ra thì tiền k bị lock vĩnh viễn và giá trị luôn chuẩn
+
+-> Làm tròn lên
+Khi liên quan đến transfer tiền, luôn làm tròn chuẩn lên hay xuống tùy TH. Khi có phép chia thì đừng ss bằng vì nó tự làm tròn rất nguy hiểm. 
+
+-> Fee-on-transfer token
+Là token ERC20 đặc biệt mà khi transfer sẽ tự bị burn đi 1 lượng. Khi tạo 1 protocol làm việc với mọi token ERC20 nói chung cần chú ý đến loại token này tránh lỗi.
+
+-> VD rất hay trong việc gửi token qua lại giữa các contract và user
+Tách lib khi cần tái sử dụng code logic nhiều.
+
+Khi 1 contract thg hay phải gọi 1 hàm 1 contract khác. Nếu có thể hãy cho nó lưu thành 1 biến luôn để gọi thg xuyên ngay từ constructor, ta có thể gọi từ instance trực tiếp. Trừ khi gọi same code nhưng nhiều address khác nhau mới phải truyền address mỗi lần gọi.
+
+-> Tính năng mở rộng:
+Cung Oracle
+Đã làm swap thì nên hỗ trợ thêm tính năng flash swap.

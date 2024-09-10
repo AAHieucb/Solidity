@@ -1,0 +1,915 @@
+Solidity
+Rust cũng lập trình smart contract, khi đó nó chạy trên Solana or Near chứ k chạy trên Etherium. Đó là 2 hệ sinh thái chạy bằng rust lớn nhất. Có nhiều ngôn ngữ lập trình smart contract.
+Ethereum là 1 phần mềm nên tảng mã nguồn mở. Mọi người có thể tải source về và chỉnh sửa r compile để dùng theo sự chỉnh sửa của mình or dùng bản gốc or contact với bên phát hành để đóng góp chỉnh sửa. Ethereum hỗ trợ mọi người tạo ra token, smart contract riêng của họ để phát triển doanh nghiệp, dự án riêng của họ. 
+
+Ethereum đang phát triển 1 ngôn ngữ lập trình smart contract của riêng nó là FE. 
+Mọi thứ về tốc độ truyền tải hay hiệu suất thì Blockchain Etherium đã làm hết r, tối ưu hết r. Lập trình smart contract chỉ cần tạo và thực hiện rất đơn giản
+
+=> ref tới "Projects / TravaNFTMarketplace / TravaCore"
+
+
+-> https://solidity-kr.readthedocs.io/ko/latest/assembly.html
+Tổng hợp lệnh assembly của solidity
+
+
+
+-> Scaffold
+Tool mẫu dự án fullstack test rất mạnh
+
+
+
+# Basic
+block.timestamp là đơn vị giây
+
+Biến public tự có getter, custom getter sẽ đè lên hàm getter gốc. Có thể viết getter lấy nhiều thứ hơn trong 1 hàm.
+
+-> Storage hay memory
+Data lưu có 2 location là storage và memory. Mặc định là storage default và lưu data cố định, nó tốn nhiều gas hơn. Trong hàm nên specific rõ ra.
+
+Storage: state của blockchain được lưu lâu dài trong blockchain
+Memory: là biến chỉ dùng khi function được execute
+
+Ngoài ra còn có calldata nó tương tự như memory nhưng có điểm khác là: 
+calldata: chỉ dùng là đầu vào của EXTERNAL function là dynamic size. Dùng calldata thì ta có thể thực hiện cắt cái biến đó với [<from index>:<to index>]. calldata không thể chỉnh sửa như memory. 
+=> dùng calldata thì cắt được dữ liệu của cả 3 type array, string và bytes 1 cách nhanh chóng
+
+-> Function: có 2 loại
+create transaction: change state var, đổi state của blockchain, trao đổi tiền làm thay đổi số dư mỗi người
+no transaction: free to call, k đổi state of blockchain
+
+-> Dùng mảng, bytes, bytes32, string khác nhau
+
+-> remix ethereum
+Trong remix mặc định mỗi account có 100 ether và gas limit là 30000000. Mỗi khi ta ấn deploy thì account nó spend 1 lượng ether nhỏ là phí gas đó. Sau đó ta ấn các nút màu cam or đỏ thì đó là các giao dịch ta thực hiện sẽ tiếp tục trừ 1 lượng ether. Smart contract được lưu trong block và công khai ai cũng có thể truy cập. Đầu tiên ta deploy contract lên mạng blockchain lưu vào 1 block bằng 1 tài khoản(tk bị trừ 1 lượng ether nhỏ). Xong 1 tài khoản khác lại vào block đó thực hiện 1 giao dịch thay đổi state var hay state blockchain(ấn nút cam or đỏ trong remix), thì tk của họ cx bị trừ 1 lượng ether nhỏ là phí giao dịch. Như v ai cũng truy cập được vào smart contract là như v. Nếu ta tạo 1 ứng dụng đặt cược và deploy lên blockchain thì mn khác vào thực hiện giao dịch(ấn cam or đỏ) và mọi thứ diễn ra y hệt cơ chế bth.
+=> đã biết
+
+Khi giao dịch thông thường ta sẽ được set gas price, trong remix mặc định gasprice là 1 wei có thể lấy bằng: tx.gasprice
+=> tức là remix cho ta dùng gasLimit*gasprice = gasLimit*1 là chỉ dùng bằng lượng gas limit thôi
+
+-> Visibility cho hàm và biến
+private: chỉ truy cập trong contract. Nó chỉ cản các derived contract khác truy xuất tới state var đó và thay đổi thông tin mà thôi. K ảnh hưởng tính công khai minh bạch của blockchain vì mọi người vẫn có thể xem nó công khai.
+internal: truy cập trong contract và child của nó
+public: truy cập trong contract, child, others transactions and accounts
+external: chỉ truy cập bởi others transaction, contract và child k truy cập được -> external state variable k tồn tại Vd interface k đc có state var
+=> dù v k được dùng private để lưu các thông tin nhạy cảm vì dù là private, lưu trong blockchain là công khai nên sẽ có các cách khác để lấy được giá trị đó
+
+External chỉ nên dùng ở 1 function để cho 1 contract khác gọi tới nó, nhưng thực tế, ta gọi external function trong contract hiện tại cx chả báo lỗi gì, nhưng phải dùng thêm this
+Phân biệt: gọi hàm với this là đọc từ state phải dùng view, còn gọi trực tiếp thì như bth; gọi với this là gọi như 1 đối tượng từ ngoài gọi độc lập nên call được cả hàm external ở ngay trong chính function còn gọi trực tiếp
+
+-> input of a public function k thể là multidimensional array dynamic size or mapping. output bị hạn chế hệt input => chú ý là chỉ giới hạn với public function vì private function chỉ ta dùng ta kiểm soát được hết thì k bị hạn chế gì hết
+- Có nên return output of function là arr với size k fix? No, vì ta tưởng rằng 1 hàm số khi get 1 giá trị thì k tiêu tốn gas nên k sao => sai vì hàm số get k thôi thì vô dụng còn gì, hàm get thường được dùng để lấy giá trị của state var.
+VD: Contract A có hàm get return 1 address[] có 1 tỷ phần tử. Nó là public function tưởng là ổn r. Xong 1 ông nào đó tạo contract B gọi hàm get của contract A, vì hàm này public nên contract B gọi được. Contract B sử dụng hàm có tính gas để lấy hàm get 1 tỷ địa chỉ của A -> toang luôn vì contract B sẽ cần quá nh gas -> tức là expect là A k tính phí nhưng B gọi vào A qua 1 hàm tính phí thì error nên trái với tính predictable -> hàm A trả 1 tỷ địa chỉ xem ra chả dùng được ở đâu hết nên là vô dụng k nên dùng => nói cách khác 1 hàm số public trong smart contract thì phải luôn kiểm soát được lượng gas k bh là vô cực or quá lớn.
+
+-> mapping(uint=>uint) chỉ dùng trong storage vì nó chứa nested mapping. Tức chứa thêm giá trị ánh xạ sẽ buộc phải lưu trong storage. 
+
+-> 2 token cùng tên nhưng địa chỉ trên blockchain database khác nhau là khác nhau. Nên mỗi token chỉ được deploy 1 lần, nếu deploy nhiều lần thì ra các token khác nhau. Nếu muốn thêm hay bớt token thì dùng burn và mint, nếu muốn update SM token đó thì dùng upgradeable chưa học là khả năng cập nhập code của smart contract. 
+Chứ kp là cứ sửa r deploy lại vì khi đó ra đồng coin mới. Vì deploy thì ra rồi thì bất biến k tác động được nx, chỉ gửi các trans để thực hiện các hàm public đổi state của blockchain mà thôi. 
+
+-> Dùng new
+-> Dùng constructor
+-> Verify signature
+-> Dùng try catch
+-> Dùng msg.sender và tx.origin
+-> Dùng selfdestruct: đã deprecated => tấn công contract bằng selfdestruct
+-> Dùng require, assert, revert
+-> Dùng struct
+
+-> Create multisig wallet
+-> Dùng các biến có sẵn: block.number, block.timestamp, type(B).creationCode, type(uint).max
+
+-> Phân biệt call, staticcall, delegatecall:
+- call là cách ta gọi 1 hàm của contract khác từ contract này, gọi bất cứ hàm gì, và có thể gọi vào hàm k tồn tại để mục đích gửi tiền cx ok. Call và interface là 2 cách gọi hàm phổ biến nhưng interface phải biết abi còn call thì chả cần. State và function của contract nào thì tác động đúng contract địa chỉ đó rõ ràng như mặc định. EVM trigger việc gọi hàm khác thông qua 4 bytes đầu tiên là hash của method. Tiếp sau đó là các chuỗi có độ dài fix 32 bytes VD trên Etherscan có thể xem:
+MethodID: 0x2d2da806
+[0]: 000000000000000000000000e105ba42b66d08ac7ca7fc48c583599044a6dab3
+thì 0x2d2da806 là 4 bytes đầu của giá trị hash keccak256 của depositETH(address) có thể check bằng công cụ hash keccak online: https://emn178.github.io/online-tools/keccak_256.html, còn giá trị [0] là input method dưới dạng 32bytes được đánh số từ 0. 
+- delegatecall: cũng là gọi hàm của contract khác nhưng state lại là của contract này(2 contract phải đúng thứ tự biến). Người A gọi vào contract B delegate call đến contract C thì msg.sender trong hàm contract C vẫn là A. delegatecall thường được sử dụng trong proxy pattern
+- staticcall cơ bản giống call chỉ khác là dùng staticcall k đổi state của contract. Do đó nó mới ít dùng mà dùng mẹ call luôn vì call gọi được cả view và hàm đổi state. Nếu staticcall 1 contract mà hàm làm đổi state, tx fail và revert.
+=> Cả 3 loại call đều có hàm assembly để thực hiện để tối ưu
+
+
+
+# Keyword pure và view
+pure: k đổi state của blockchain và không read state var nào cả.
+view: k thay đổi state của blockchain
+=> function có view or pure có thể lấy giá trị trả về. Các function k có view or pure thì là transaction tốn gas và k thể return giá trị. pure function chỉ gọi được pure function khác, view cũng v.
+
+state của blockchain coi là đổi khi: gán biến state var, phát event, tạo contract mới or xóa contract, gửi ether, gọi mọi function k dùng view or pure, low-level call, dùng inline assemly chứa opcodes.
+read from state là khi: lấy giá trị của state var; truy cập vào <address>.balance(tức số dư của 1 address nào đó); truy cập vào các biến global như block, tx, msg (trừ msg.sig, msg.data); gọi bất cứ hàm nào k có pure; dùng inline assemly chứa opcodes. 
+
+=> Hàm view k thể đổi state của function nên ta có thể tạo ra các tính toán phức tạp nhưng miễn k đổi state là đc. Nhưng nên nhớ 1 hàm transaction gọi 1 hàm view thì nó phải pay fee cho cả logic xử lý trong hàm view.
+
+
+
+# Gas
+Khi gas bị vượt quá gas limit thì mọi state change sẽ undone nhưng gas vẫn bị trừ đi -> để ngăn các hàm chạy vô hạn tốn power xử lý
+Gas limits có 2 giới hạn: 1 là gas limit ta tự set trong tài khoản để thực hiện mỗi transaction và block gas limit do network set lượng gas cho cả block. Gas limit thực hiện phải thỏa mãn 2 cái đó nhưng thường ta chỉ cần qt đủ gas cho transaction của ta thôi.
+
+1 Ether (ETH) = 1.000.000.000.000.000.000 Wei
+Gwei = 10^9 wei. Tương tự có Kwei, Mwei
+Gas là 1 đơn vị đo lường trên Ethereum. Các hoạt động trên Ethereum cần 1 lượng năng lượng tính toán nhất định. Các thợ đào có nhiệm vụ sử dụng năng lượng để hoàn thành hoạt động đó => Gas ra đời để đo lường lượng năng lượng mà thợ đào bỏ ra để có được phần thưởng tương xứng. 
+Mạng lưới Ethereum sẽ k hoạt động nếu k có Gas, đơn giản vì k có gì đo lường để thưởng cho đóng góp của thợ đào. 
+Để mạng lưới Ethereum được mở rộng thì mức phí Gas nên càng nhỏ càng tốt. Nó ra đơn vị nhỏ như v để tính fee thôi.
+VD: 1 người deploy smart contract lưu trong 1 block trong blockchain tốn 3000 gas, 1 người tạo ra 1 transaction update variable của contract đó lưu vào 1 block khác của blockchain tốn 200 gas.
+Giả sư hàm update đó gán giá trị của state var bằng 1 giá trị khác là "Hello A!" => nó sẽ tính số operations thực hiện trong cái transaction đó. VD ở đây gán từng ký tự của string cho biến, mỗi ký tự là 1 operation thì phải thực hiện 8 operations. Khoảng 5 gas cho 1 operation thì tổng tốn 40 gas cho việc gán = đó. Tương tự mỗi dòng của transaction sẽ đều tốn gas và tính được tổng gas của trans
+Vd: tính tổng x+y tốn 10 gas; uint x = 1 tốn 5 gas => Chi tiết được viết trong ethereum white paper
+
+Khi thực hiện trans sẽ luôn có gas limit ta tự set, nếu gas vượt quá thì trans đó sẽ bị abort. VD 1 function while(true) vô hạn sẽ ngốn hết gas và báo error. 
+Gas limit là số gas, gas price là giá của gas bằng coin theo ether chẳng hạn. Dùng nhiều gas price thì trans được xử lý cx nhanh hơn => tức là set gas và set gas price(là price per gas) => fee = gas*gas price
+Cơ chế: VD tk có 7000 gwei, set gas limit là 3000 và gas price là 2gwei-> ấn deploy tài khoản trử đi 6000 gwei là tối đa cần để send trans-> trans thực tế chỉ cần 1000 gas tức 2000 gwei-> 4000 gwei được gửi trả lại cho ta.
+=> fee là gas phụ thuộc vào data lưu trữ trong smart contract và operation.
+
+
+
+# IPFS
+Lưu data trên blockchain sẽ ngốn tiền, ta chỉ nên lưu data nhỏ còn data lớn như ảnh thì có thể dùng IPFS, nó là p2p file storage bất cứ ai cũng có thể truy cập vào dữ liệu qua mã hash: upload data cần lưu vào blockchain to IPFS(free)-> nhận hash-> lưu hash vào smart contract-> mọi người vào smart contract muốn lấy data sẽ có hash-> dùng hash đó vào IPFS lấy dữ liệu: https://ipfs.io/ipfs/<hash>
+
+Để sử dụng IPFS lưu ảnh, ta phải tải về IPFS cho desktop, đăng ảnh sẽ có link
+
+
+
+# Event
+Cần thiết để get data từ frontend, đặc biệt là data thống kê
+
+
+
+# Dùng transfer, send, call
+- transfer khi dùng để send ether sẽ tiêu tốn 2300 gas; nếu nhận ether bằng 1 trong 3 cách này đều gọi vào 1 hàm đặc biệt là hàm fallback. Nếu có bất cứ 1 lỗi nào khiến transaction fail sẽ throw error;
+- send giống transfer chỉ khác là trans fail sẽ trả ra bool chứ k throw error;
+- call ta có thể dùng hết gas or tự xđ lượng gas dùng, cx return bool và bytes lưu data => ưu tiên dùng call vì lượng gas sẽ phụ thuộc vào các operation khác nhau tiêu gas khác nhau nên để fix sẽ k tối ưu; transfer và send cố định 2300 gas nên ta sẽ k thể làm đc gì nhiều phức tạp. bytes data mà nó return ra có thể dùng để thực hiện tiếp trans gì khác nếu thành công
+
+VD: 1 contract nhận tiền và gọi vào 1 contract khác tiêu tiền mà đều dùng hàm send -> thì họ sẽ chỉ dùng đc trong phạm vi 2300 gas
+Dùng call sẽ là 1 guard cản re-entrancy hack 
+
+Phải có payable thì function mới thực hiện được trans gửi nhận ether. Dùng msg.value thì func phải có payable or sẽ lỗi
+
+
+
+# Cách gọi hàm của 1 contract khác
+Có thể dùng call
+
+-> Cách chuẩn dùng interface + address
+
+
+
+# Library
+Library như contract chỉ khác là k có storage nên k có state var, k có ether => dùng lib giúp tránh trùng lặp code, tái sử dụng, thêm tính năng cho các kiểu dữ liệu. Trong thực tế, người ta thg dùng các open source lib có sẵn trên github uy tín đc nhiều dev sử dụng. Vd: thư viện SafeMath của openzeppelin-contracts
+
+Lib có public, external, ta deploy lên 1 block, các contract khác sẽ dùng lib -> khi compile sẽ link lib đó vào contract và tái sử dụng nên k tốn thêm gas khi deploy -> deploy contract lên 1 block khác và sử dụng đc function của lib đã từng đc deploy ở 1 block xa
+
+Đôi khi dùng remix nó bị giới hạn quá nh gas k cho deploy, nhưng khi để vào trong lib thì lại ổn.
+
+-> Dùng lib openzeppelin
+OpenZeppelin là công ty chuyên cung các sản phẩn decentralized app. Nó cũng nổi tiếng với các thư viện có sẵn các contract hữu dụng như: Ownable, các loại token, Address, SafeMath, SafeCast, AccessControl,.. Có thể cài npm
+
+SafeMath là library tính toán => Thư viện SafeMath bh k cần thiết nx khi mà phiên bản hiện tại nó đã tự check tràn để báo lỗi, tự có các hàm mulmod rồi
+SafeCast để convert giữa uint và int bao nhiêu bit. VD đổi từ uint sang int8 chẳng hạn
+Thư viện address cung các util cho biến address như isContract, gửi ethers
+AccessControl là contract kiểm soát quyền access của từng người. VD 1 contract muốn ông A là minter, ông B là burner,..
+=> ref tới "Projects / TravaNFTMarketplace / TravaCore"
+
+-> using ShortStrings for *; => khi dùng với mọi type biến trong file này
+
+
+
+# Transaction
+Mọi transaction đều có nonce, nonce của transaction là số lượng transaction được gửi từ 1 address. Mỗi lần gửi 1 transaction, nonce sẽ tăng lên 1. Tuy nhiên vì 1 trans có thể valid hay k valid nên có quy tắc: trans với nonce là 2 k thể được đào nếu chưa sent transaction có nonce là 0 or 1 trước đó.
+=> điều này ngăn cản double-spending vì nonce sẽ xác định thứ tự của transaction
+=> nó khác với nonce của block dùng cho thuật toán POW trong bitcoin blockchain
+
+-> Phân biệt: - A tạo 1 transaction có transaction hash là X gửi Ether cho B. 1 transaction bình thường như v thì Ether scan sẽ hiện:
+From: A; To: B; Transaction Hash: X; với A, B là address người gửi, người nhận; address đó là account address or wallet address là duy nhất của 1 user.
+- Nhưng smart contract thì sẽ khác. VD: 
+A tạo ra 1 transaction created 1 contract: From: A; To: <Contract hash B>; Transaction Hash: X(transaction hash nó klq j đến địa chỉ ta sẽ kqt tới nó nx); => Bởi vì mọi transaction trong blockchain đều là gửi từ 1 cái này sang 1 cái khác nhưng đâu phải giao dịch nào cũng có người nhận đâu. VD tương tác với smart contract thì người nhận sẽ là địa chỉ của contract. Khi ta deploy hay chạy 1 hàm kp view or peer thì đều là tạo 1 transaction From: người thực hiện hàm; To: địa chỉ contract
+- Xét TH tạo token mới: 
+Trong rất nhiều contract thì có contract sẽ tạo ra coin. Trong ether scan khi search bất cứ 1 đồng coin nào bằng tên của nó, thông tin của nó sẽ luôn có 1 mục là contract -> đó là contract tạo ra coin đó. Bên trong contract đó có Token Tracker là tên đồng tiền contract đó sinh ra.
+Đầu tiên: A tạo ra 1 transaction, transaction này tạo 1 contract From: người gửi; To: địa chỉ contract; và contract đó có coin luôn vd như đồng USDC
+=> Khi 1 transaction tạo contract, contract đó ra đời sẽ gắn vào 1 địa chỉ riêng công khai để mn có thể refer tới nó được; địa chỉ này hoàn toàn là tự có như 1 node trong giao dịch. Tức là có thể nhận tiền và gửi tiền được như 1 node, chỉ có điều nó là smart contract.
+=> Như v khi search trong ether scan, ta sẽ bắt gặp 3 thứ: 1 là coin-tên coin, 2 là contract-địa chỉ contract; 3 là address-địa chỉ address là hexa; Như v k có gì bất ngờ khi bắt gặp 1 contract có địa chỉ riêng. 1 contract có thể gửi từ address này sang address khác bằng nhiều cách.
+=> Thông thường thì 1 token có thể tạo ra ez như v nhưng nhiều cái như DAI Stable coin chẳng hạn thì A tạo contract From A To Contract Address A, và tạo contract from A to Contract Address B(thế là có 2 contract address); Contract Address A lại tạo 1 contract gửi từ A vào Contract Address B(vì contract address như 1 node bth r), để làm được v thì đơn giản lập trình cho contract address A gửi vào địa chỉ contract address B mà thôi ez đồng thời trong transaction đó lại tạo 1 contract D sinh coin DAI. Tùy biến mọi thứ đc. Sau khi deploy xong, người khác vào dùng stable coin đều From họ To address contract (mà đã tạo ra stable coin)
+
+
+
+# Mã hóa
+-> Hàm băm Keccak-256 đang được dùng bởi Ethereum, SHA256 được dùng bởi bitcoin, chúng khác nhau nhưng đều tạo ra mã băm 256 bit. Họ không dùng MD5 vì kháng va chạm đã bị phá vỡ sau 2^21 lần băm.
+SHA3 trước đây gọi là keccak chính là hàm Ethereum đang dùng -> keccak256 là hàm global trong solidity luôn, truyền vào 1 string là nhận ra 1 chuỗi 256 bit thôi; bytes32 là kiểu chuỗi kích thước 32 bytes có thể dùng lưu kết quả của keccak
+
+-> encode
+Solidity cũng cung cấp 1 loạt các chức năng mã hóa ABI
+Hàm abi.encode() sẽ xác định mã hóa các đối số đã cho. Còn abi.encodePacked() mã hóa đóng gói các đối số đã cho bằng cách nối lại. Cả 2 hàm đều nhận các type bất kỳ và biến thành bytes.
+=> Có thể convert từ address sang string với abi.encodePacked thoải mái nhưng từ string sang address thì k
+=> abi.encodePacked() có thể bị collision vì nó nối lại, còn abi.encode thì không
+
+=> merkle tree hash các transaction bằng cách gọi: keccak256(abi.encodePacked(<trans1, trans2>);
+
+-> Merkle tree
+Cơ chế dùng merkle tree để kiểm tra 1 transaction có nằm trong 1 block hay k: lấy tất cả trans -> tạo merkle tree-> nhét merkle root vào block. Giả sử có 8 trans và trans 3 nằm ở vị trí thứ 3 của trans trong merkle tree. Để check trans 3 có nằm trong tree hay k? kết hợp với trans 4 tạo H34 -> kết hợp với H12 tạo H1234, kết hợp với H4567 tạo H12345678
+=> từ 8 trans, bh ta chỉ cần 4 trans để tạo lại merkle root từ đó so sánh, nếu merkle root trùng với merkle root trong block thì trans thứ 3 có nằm trong block. 
+Tức ta chỉ cần log2(n) để tạo ra merkle root-> VD 1 full node bth có 1000 trans, ta bh chỉ cần lấy log2(1000) tức ~10 trans để check 1 trans có nằm trong tree hay k chứ kp download cả 1000 trans
+
+
+
+# Data type 
+Trong solidity có kiểu dữ liệu fixedMxN và ufixedMxN là số lượng các số phần thập phân nhưng kiểu này chỉ tồn tại nhưng k thể gán và lấy giá trị được. Các function dùng nó sẽ biến mất => 1 kiểu dữ liệu tồn tại nhưng chả bh dùng.
+
+Trong solidity có kiểu integer là int, int8 đến int256 và tương tự uint cũng chia như v.
+int mặc định là int256. Số đằng sau biểu thị số bits mà nó có thể dùng để biểu diễn. Mỗi bits biểu diễn 0 or 1 đó. 
+Vd: int8 chạy từ [-2^7 -> 2^7-1] vì signed nên 1 bits dấu. Do đó uint hay uint256 sẽ biểu diễn ra khoảng dương cực kỳ lớn, mấy chục số 0.
+
+Trong solidity k có floating point và ta luôn dùng đơn vị nhỏ nhất của tiền tệ để quy đổi ra làm mất phần thập phân như wei, cent.
+
+-> Dùng array, bytes và string là các thứ giúp lưu các dữ liệu cùng kiểu:
+1) Array: VD: string[10] str; or string[] str; với mảng động
+Array nó luôn chặt chẽ: VD: int[] public arr = [-1, 2, 3]; => đúng
+uint[] public arr = [1, 2, 3]; => đúng nhưng int[] public arr = [1, 2, 3]; => sai vì dùng int thì trong mảng phải có phần tử âm, nếu k sẽ bị lỗi cannot convert to...
+Khi dùng các kiểu như string hay array như int[] trong 1 function đều phải specific datalocation (còn dùng var ở ngoài mặc định là state lưu trong storage rồi). VD trong hàm dùng: int[] memory = insideVar = storageVar; or input vào hay return cx v.
+Khi tạo 1 array mới trong 1 function thì array đó phải fixed size: 
+Vd: int[2] memory a; or int[] memory a = new int[](<số lượng phần tử>);
+Chú ý: int[2] memory h; khi dùng trong hàm mà ta return nó thì phải dùng returns(int[2] memory) còn nếu dùng new thì k cần. Nếu thực sự cần tạo 1 mảng data thì nên dùng new là chuẩn => ảo
+Khi returns 1 mảng thì gọi hàm sẽ xem được toàn bộ phần tử trong mảng luôn
+
+2) string lưu chuỗi. string trong solidity bh k còn là 1 mảng các char nx mà nó coi đó là 1 cục luôn nên ta chỉ lưu data và lấy ra. Nhưng nó vẫn là 1 kiểu chuỗi và trong function vẫn phải specific data location.
+
+3) bytes: câu hỏi đặt ra là string nó lưu thành 1 cục thì muốn iterate từng phần tử của string thì k dùng được mà phải convert sang kiểu bytes.
+bytes là kiểu dữ liệu lưu được như string nhưng lại có dạng array nên iterate từng phần tử đc.
+có bytes, bytes1, bytes2,.., bytes32 vì 1 byte bằng 8 bits nên nó lưu max đến 256 bits cũng như int256. byte là alias for bytes1. Còn bytes là alias của byte[] tức là kiểu bytes có kích thước động dài bao nhiêu cũng được, ta có thể dùng nó lưu chuỗi dài vô tận. Tuy nhiên bytes có khác với byte[] là nó tốn ít gas hơn, nên bh chả ai dùng byte[] nx mà chỉ dùng bytes (lưu 1 ký tự tốn tầm 3 gas). Dùng bytes truyền vào chuỗi dài bất kỳ đều ok
+
+Cơ chế của bytes: khác với việc lưu số thì số bytes quy ra bits là biết được rằng khoảng giới hạn của số int đó là từ bao nhiêu đến bao nhiêu. Khi lưu thành chuỗi char thì mỗi char nó chiếm 1-2 bytes tùy ngôn ngữ, ở trong solidity là 1 byte. Tức là dùng kiểu byte chỉ lưu được 1 ký tự còn bytes32 thì lưu max 32 ký tự mà thôi.
+
+Cách dùng: Do bytes nó lưu literal string, nhưng trong bộ nhớ nó sẽ lưu dưới dạng bytes có prefix là 0x nên khi khai báo 1 biến bytes, ta có thể truyền vào "literal string" or dạng bytes 0x cx đc. Vd: bytes1 public data = "H" => gán là "HH" sai luôn vì chỉ được 1 ký tự or bytes1 public a = 0x65;
+Nhưng khi bytes memory là tham số truyền vào của 1 function thì ta k được truyền literal string mà phải đúng là bytes prefix 0x...
+
+=> Tức là bh có các cách truyền vào hàm ở giao diện là: 0x.. cho bytes, [,,] cho mảng, "<số/text>" cho string và int
+Do đó nếu k truyền vào ký tự gì cả thì bytes của null là truyền vào 0x00
+
+Kiểu bytes có format riêng, giống như trong qt có QByteArray cx lưu kiểu khác có quy ước, ta k cần biết cách nó lưu ntn. 
+
+bytes được hỗ trợ bởi rất nhiều hàm còn string thì chỉ lưu 1 cục. Nên ta có thể convert string <-> bytes để thao tác như:
+string str = string(<biến bytes>); or bytes bts = bytes(<string>);
+Từ đó ta có thể dùng rất nhiều hàm trong solidity thao tác với bytes như abi.encoded or keccak256,.. để duyệt qua từng ký tự or nối string với nhau,.. Các hàm đó đều chỉ thao tác với bytes
+
+Phân biệt bytes và bytes32: 
+bytes là kích thước động và bytes32 là kích thước tĩnh. Trong solidity, các biến kích thước tĩnh hay fixed thì khi lưu k cần phải specific nơi lưu trữ nó, tự biết là lưu ở memory or storage(kích thước fixed thì kích thước nó được xác định nên lưu vào k sợ bị tràn bộ nhớ). Còn các biến kích thước động như bytes, array, string, or byte[](chính là array) thì phải nói rõ nơi lưu (vì có thể kích thước quá lớn gây tràn bộ nhớ nên phải specific nơi mà có thể lưu được đủ).
+Ví dụ dùng bytes32 bts = "H"; thì nó sẽ dùng hết 32 bytes để lưu dẫn đến kéo theo hàng đống số 0 đằng sau. Còn dùng bytes bts = "H"; thì bts sẽ tự dùng đủ số bytes để lưu "H" mà thôi.
+=> do đó trong hàm số, Vd ta returns(bytes memory) thì returns bytes("Hello");
+=> Và điều đặc biệt là kích thước tĩnh hay động nó có ảnh hưởng đến việc dùng hàm. VD: động thì dùng được hàm push của array để thêm element vào array, nếu mảng tĩnh thì k dùng được hàm push mà chỉ có gán trong gh phần tử xđ
+
+Chú ý: 1 bytes bằng 2 con số bắt đầu tính sau dấu x. VD gặp 1 hàm số nhận vào kiểu bytes4 thì ta phải truyền đủ là "0x12345678" nếu k đủ các số thì sẽ revert lỗi INVALID_ARGUMENTS
+
+-> Từ khóa new: 
+Ta đã biết từ khóa new để tạo ra 1 instance mới của contract trong 1 contract khác. Ta còn có thể dùng nó để tạo ra 1 data mới trong function. 
+Với bytes: bytes memory bst = new bytes(<số lượng bytes>); => khai báo ô nhớ mới kiểu bytes, bên trong k lưu gì cả mặc định toàn số 0
+Với array: int[] memory a = new int[](<số lượng phần tử>); => khai báo 1 mảng int bao nhiêu phần tử và mặc định tất cả các phần tử là 0
+Với string: string memory a = new string(<số lượng phần tử>); => khai báo null string chiếm 1 lượng ô nhớ
+=> khi khai báo với new thì phải specific số lượng phần tử. Khi dùng với string thì khai báo 10 phần tử nhưng dùng 100 phần tử cx đc, nhưng dùng với array thì chỉ đc dùng trong phạm vi đã khai báo vì string nó mặc định là phần tử luôn động còn array thì ta phải quyết định nó động hay tĩnh luôn.
+
+VD: khai báo array với new thì array đó k dùng được hàm push. Nhưng khai báo k dùng new mà chỉ có [] thì lại đc vì nó động. 
+Nhưng lưu ý là trong 1 hàm số, khai báo array động cũng sẽ thành tĩnh nhưng nó hiểu v chứ k báo nên k dùng được push. Muốn push phải khai báo nó là biến state của contract
+
+-> Có thể convert đủ kiểu
+
+-> uint nằm từ 0 -> 2^256 - 1 => vượt quá sẽ quay vòng lại ban đầu overflow -> tương tự có underflow -> bản mới v0.8 k còn tự động quay vòng
+
+-> Dùng mapping
+
+
+
+# Assembly
+Assembly vẫn được dùng trong solidity vì ngôn ngữ này có những thứ k làm được. Assembly cho ta tương tác trực tiếp với EVM, trực tiếp với bộ nhớ nên khá nguy hiểm. Nếu k dùng được solidity mới phải viết bằng assembly.
+Khi EVM chạy code, nó sẽ dùng các Opcode để xử lý stack từ từ như ADD, STOP, SUB,.. và khi dùng assembly ta sẽ thao tác trực tiếp với các opcode đó.
+
+Trong EVM, các biến được lưu trong 1 single 256 bits slot. VD: uint a; được lưu trong 1 slot. 1 array or mapping sẽ lưu trong nhiều slot. Các opcode trong EVM sẽ thao tác vói single slot.
+
+Assembly có giá gas rất rẻ nên tạo loop và làm các thứ phức tạp rất ok nhưng khó
+
+
+
+# Math trong solidity
+
+
+
+# Chainlink
+Chainlink là thứ giúp blockchain tương tác với thế giới bên ngoài. Nó cũng cung cấp hàm sinh số ngẫu nhiên tối ưu được dùng riêng trong blockchain
+
+VD: NFT721 của ta ta toàn lấy id là 0,1,2 quá đơn giản, ta sẽ dùng chain link để sinh số ngẫu nhiên cho nó. vd 1 vật phẩm NFT nhân vật trong game sẽ có id là 1 số 10 chữ số sinh ngẫu nhiên, 2 số đầu quy định màu da, 2 số sau quy định kiểu tóc,..
+
+Các bước sinh số ngẫu nhiên bằng chainlink:
+--> npm install --save @chainlink/contracts => thư viện chainlink có sẵn or dùng trên remix thì import cái link phiên bản 0.8 vào => cách tốt để sinh số ngẫu nhiên
+
+
+
+# NFT
+Xét 3 hàm cơ bản của 1 NFT: chuyển NFT từ người này sang người khác; xem chủ của NFT hiện tại là ai; lấy đường link tới metadata của NFT;
+Để NFT hóa tài sản thực ví dụ 1 căn nhà hay 1 lô đất thì NFT của tài sản đó phải có url đến 1 file chứa thông tin của lô đất đó, nó chứa các thứ như nhà quay hướng nào, bao nhiêu tầng, bao nhiêu mét vuông,... Ta có thể lưu thông tin đó vào state var nhưng thg là lưu trong ipfs và trả ra hash của nó mà thôi. Thế là biến được tài sản thực thành tài sản số, nhưng điều này chỉ thành hiện thực khi người ta chịu công nhận dùng blockchain đó để thay cho giấy tờ nhà đất và k vi phạm pháp luật. VD url phải dẫn đến 1 giấy tờ pháp lý về lô đất chẳng hạn, nhưng k ai đảm bảo nó k bị làm giả vì pháp luật chưa công nhận NFT có giá trị pháp lý. 
+
+-> 1 tài sản số trên blockchain dẫn url đến 1 tài sản thực mà lại chuyển được qua lại, hiện ra được trên ví thì họ cần 1 quy chuẩn chung chính là ERC721.
+IERC721 kế thừa IERC165(IERC là interface erc)
+ERC1155 = ERC721 + ERC20 bởi vì ERC721 cho 1 số id với mỗi 1 tài sản cho nên 2 món đồ giống nhau(kp copy) thì sẽ có id khác nhau, còn ERC20 thì nó k chia id mà nó chỉ cho biết ở 1 địa chỉ đang sở hữu 1 lượng bao nhiêu cái gì đó.
+VD: trong game có 1 vật phẩm, mà A sở hữu 8 cái, B sở hữu 3 cái mà vật phẩm này giống hệt nhau. Nếu dùng ERC721 thì mỗi vật phẩm đều có 1 id riêng. Nếu 1 ai mà sở hữu 1000 vật phẩm này thì sẽ lưu 1000 id khác nhau và điều này là k cần thiết. Để tránh được điều này ERC1155 ra đời. Nó sẽ tạo ra NFT cho vật phẩm đó kiểu mỗi loại vật phẩm có 1 id riêng tức các vật phẩm cùng loại sẽ có id giống nhau và mỗi địa chỉ sẽ chứa 1 lượng các NFT có id đó. Phải dùng đúng loại tùy TH vd 1 bức tranh thì chả ai chia bức tranh ra cả nên họ dùng ERC721.
+VD: người ta bán cổ phiếu, mỗi tờ cổ phiếu có giá trị như nhau mà thì sẽ dùng ERC1155 để xem address nào sở hữu bao nhiêu cái NFT có id là gì
+
+-> Dùng Opensea: là sàn giao dịch NFTs phi tập trung lớn nhất thế giới hiện giờ. Có thể mua bán bất cứ vật phẩm NFT nào. Có thể giao dịch các vật phẩm game NFT ở đây. Có thể thực hiện các phiên đấu giá luôn.
+Để giao dịch: kết nối ví với opensea. Ta có thể tạo ra 1 bộ sưu tập My Collections là nơi lưu các NFTs để bán or sưu tầm
+
+Tạo NFT ERC721 cần 2 thứ: smart contract cho NFT, nơi lưu resource của NFT(cx chỉ là 1 nơi lưu file 1 cách public);
+VD ta sẽ lưu resource trên github or storage.googleapis => K nên lưu sản phẩm thực trên github mà nên lưu ở 1 source phi tập trung
+
+-> Deploy NFT lên OpenSea + Etherscan + Remix + Truffle flatten:
+C1: kế thừa contract ERC721 có sẵn vd tài sản là 1 bức ảnh đi
+import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC721/ERC721.sol"; rồi tạo constructor là xong 1 contract NFT
+=> Deploy contract này lên mạng thì ta sẽ có 1 NFT chứa thông tin metadata đến bức ảnh của ta. Ở đây chỉ có 1 bức ảnh với 1 id duy nhất tồn tại trong cả 1 contract. Mỗi NFT tạo bởi ERC721 đều chỉ gán với 1 tài sản duy nhất.
+Trong remix, chọn đúng 1 compiler, add cả comment license, deploy lên mạng rinkeby, kết nối vào metamask ký transaction. Như v là contract đã được deploy lên blockchain và mined vào 1 block. Tuy nhiên source code chưa công khai, k có ai tương tác với smart contract của ta được, ta cần vào etherscan bằng cách tra address contract để verify and publish contract bằng cách cung cấp source để khi compile ra đúng cái abi đã có. Điều này là cần thiết vì contract phải có source code công khai để người ta có thể xác nhận đúng là contract làm đúng những gì nó supposed to do.
+Chọn compiler, license, contract address -> upload source và compile ra và so sánh với abi
+=> Chỉ có điều trong etherscan, lệnh import từ bên thứ 3 không hoạt động, trong solidity extension cũng k cho dùng hàm import. 
+Cách dùng được: tạo dự án truffle với contract hiện tại -> npm install @openzeppelin/contracts -> thế là import "@openzeppelin/contracts/token/ERC721/ERC721.sol"; -> dùng tool truffle falttener or npx hardhat flatten để merge tất cả các file import thành 1 contract duy nhất, nhớ xóa chỉ để lại duy nhất 1 license -> copy vào remix và deploy lại như bth. 
+=> Khi ta gửi lên mạng phát là có thể tương tác để test với smart contract r dù chưa mined, do đó truffle test chỉ cần deploy phát là tương tác được luôn, k cần await <contract>.deloyed()
+Trên etherscan cũng tương tự, địa chỉ của NFT nó hiện như 1 địa chỉ của token và nó được tạo ra bởi địa chỉ contract của ta. Phần read contract là chạy các hàm k đổi state, còn write contract là chạy có đổi thì phải connect to provider VD ví metamask
+-> Deploy xong vào etherscan tại contract đó là có thể tương tác được với contract qua từng hàm 1 r. Có 2 hàm 1 là _mint là hàm lần đầu tiên, bất cứ ai cũng có thể vào mint cái thẻ của ta lần đầu tiên vào địa chỉ đó và địa chỉ đó sẽ có chủ. Chủ nhân của chiếc thẻ sẽ là duy nhất 1 người đó mà thôi. Sau đó muốn chuyển NFT cho người khác thì gọi hàm transfer form và chỉ chủ nhân của NFT mới được chuyển thôi
+-> Như v là xong vc tạo NFT cho 1 tài sản số là ảnh 1 tấm card có đầy đủ các hàm cơ bản của NFT. Ta nhận ra ERC721 có thể chứa nhiều token bằng việc lưu các token có link giống nhau chỉ khác 1 tí trong url là gọi là tokenId -> tức là ta có thể gán cho nhiều tokenId là các đường link khác nhau
+Ta _mint để nó thuộc quyền sở hữu của ta. Chú ý nếu chưa mint thì k thể xem baseURI vì k thuộc về ai cả thì k ai sở hữu
+=> Nếu ta k verify and publish thì khi deploy xong thì ta là deployer vẫn có thể tương tác với smart contract được, nhưng những người khác sẽ không thể tương tác với contract của ta được bằng etherscan(phải làm frontend cho họ). Dù họ đoán được các hàm và dùng abi + address thì vẫn thao tác được bằng các library. Chứ ta vẫn dùng NFT bán bth mà k cần verify and publish.
+=> Nếu opensea k hiện ảnh thì phải nghĩ đến TH là link ảnh nó k hoạt động => opensea k nhận ảnh của github, có lẽ chủ nhân của bức ảnh có thể xóa mất chăng
+Để bán trên opensea: My Collection -> Import from smart contract-> điền địa chỉ vào-> refresh metadata là chờ 1 lát là hiện ảnh trong profile, để bán nó đi ấn vào bán thì sẽ phải xác thực giao dịch là setApprovalForAll bằng ví của ta.
+Trong opensea cũng có cơ chế để non-developer có thể bán được như v bằng cách create new item xong điền thông tin vào là 1 nó tự động tạo ra transaction và mint NFT đó vào địa chỉ của ta. 
+=> Các transaction do opensea tự thực hiện mà kp do ta chủ động thực hiện trên remix hay etherscan thì opensea nó sẽ k cho xem transaction trong mục Event, ngược lại các transaction khác ta ấn vào Date của nó là sẽ tự mở etherscan transaction đó cho ta. Dù sao thì track địa chỉ người dùng thì cx ra hết thôi
+Để tạo ra file json chứa metadata hiện ra được trong opensea các thuộc tính và hình thì phải tuân theo chuẩn nhất định:
+{
+    "name": "<tên>",
+    "description": "<mô tả>",
+    "image_url": "<image_url>",
+    "external_url": "<url of website>", 
+    "attributes": [
+        {
+          "trait_type": "<key>", 
+          "value": "<value>"
+        }, 
+        {
+            "display_type": "<type to display>", 
+            "trait_type": "<key>", 
+            "value": <value>
+        }        
+      ]
+}
+=> Lưu ý: Ta k thể xóa NFT trong opensea, đó là thứ làm chứng cho tính công khai và không thể thay thế của blockchain. Nhưng ta sửa đổi thông tin của image trong url json của github thành 1 bức ảnh khác kiểu ta bán nó đi xong ta mới sửa thì người mua sẽ bị lừa còn gì -> thực chất k ai người ta mua 1 bức ảnh mà file json và file ảnh lại ở 1 trang web cho phép 1 người khác chỉnh sửa được cả nên sẽ k ai mua ảnh của ta khi file json trên github. Ta phải upload lên 1 hệ thống k ai can thiệp đc như IPFS, 1 khi ảnh đã up lên thì k ai can thiệp vào đc nx.
+=> Lưu ý 2: Khi làm ERC721, ta mint tokenId là 1 -> ok nhưng mint tokenId là 3 vẫn ok dù tokenId là 3 thì link file metadata k tồn tại. Ta phải nhớ tokenId là gì mà mint thôi. Tức là ta deploy contract, mint hết các tokenId mà chỉ có ta biết là tokenId đó nó tồn tại, thế là sở hữu token và bán nó thôi chứ người dùng kp deployer sẽ k tương tác với token ERC721 nhé. Chỉ mint 1 lần duy nhất để nó tồn tại và dùng.
+
+--> Phân tích giao dịch mua 1 NFT của ta: 
+Hàm approve() cho chỉ có owner của 1 token Id thực hiện cho phép 1 address nào đó dùng chung tokenId đó với họ, chỉ được 1 address
+Hàm setApprovalForAll() thì bất cứ ai cũng có thể thực hiện được là cho phép 1 người nào dùng được chung mọi tokenId với họ nếu họ có tokenId, nếu họ k có thì khi nào có sẽ được dùng chung
+Khi dùng opensea, làm sao mà người bán nhận được tiền còn người mua nhận được ảnh trong khi smart contract của ta k có payable function. Đúng v, khi ta mua 2 NFT chả liên quan gì đến nhau thì khi kiểm tra etherscan, cả 2 transaction đều tương tác với cùng 1 contract=> cơ chế open sea, VD ta mua 1 NFT giá 0.01 ether: 
+Nó lấy provider là ví của ta và gọi các hàm trong 1 contract riêng của opensea -> đầu tiên nó chuyển tiền vào contract riêng đó -> Sau đó nó contract riêng đó chuyển 2.5% ether cho chính 1 address ví riêng của opensea để nó kiếm lời và phần còn lại chuyển thẳng cho địa chỉ người bán. Sau đó gọi contract của ta chuyển NFT từ người bán cho người mua với tokenId là bao nhiêu. Để làm được điều đấy, opensea đã phải verify and publish các contract để tạo sự tin tưởng r.
+
+Nếu như ta deploy contract lên opensea, xong xóa source code đi-> tada, kbh thao tác được nx vì éo nhớ hàm và etherscan chỉ còn mỗi abi
+Do hàm import từ http vẫn nhận trên remix nên nếu k cần verify and publish cho người khác xem code và tương tác mà chỉ mình ta thôi thì k cần dùng flattener j hết
+
+=> ERC721 cung cho ta 1 URI kèm tokenId để ta có thể có 100 NFT thì có 100 tokenId với cùng 1 URI đó, và mỗi NFT trong 100 cái đó là khác nhau. Hàm balanceOf của ERC721 trả ra số loại NFT khác nhau mà 1 địa chỉ đang sở hữu, 100 NFT có 100 id khác nhau, mỗi id số lượng đều chỉ có 1 và k thể chia nhỏ.
+=> ERC1155 có hàm balanceOf trả ra số lượng loại tokenId nào mà 1 address nào đang sở hữu và nó tồn tại được bằng cách ERC1155 mint từng phần một cho mỗi loại id. Lợi ích là sẽ save gas vì ERC721 sẽ phải deploy từng loại token thành 1 new contract tốn gas, nhưng theo ta nếu ta dùng 1 baseURI và tokenId trải dài chứa tất cả các NFT cx ok nhưng tư duy đó thì chia file nó rất vớ vẩn, thay vì v dùng 1 chuẩn mới 1155 sẽ tốt hơn. Nó cũng cung cấp các hàm thao tác với 1 lượng NFTs 1 lúc chứ kp muốn chuyển từ ông này sang ông kia phải chuyển từng cái 1 giúp save gas, gọi là batch operation vd: _mintBatch hay balanceOfBatch
+
+-> ERC1155 import có sẵn
+=> ERC1155 hỗ trợ cả fungible-token và non-fungible token, các token nào số lượng là 1 thì là NFT còn có > 1 thì là FT
+Giả sử ta dùng để tạo vật phẩm game, khi deploy contractERC1155 thì deployer sẽ sở hữu tất cả và transfer cho các player và player có thể trade vật phẩm với mọi người, để thực hiện 1 chức năng trong game chẳng hạn. Đó là mặc định vì ta có thể toàn quyền thêm hàm mint vào contract để mint phụ thuộc vào demand của player
+ERC1155 k có trường decimals thập phân vì 1 item của 1 tokenId thì k chia nhỏ
+balanceOf(<address>, <tokenId>) trả ra số lượng tokenId address sở hữu
+safeTransferFrom(<người sở hữu>, <người gửi đến>, <tokenId>, <amount>, <data k dùng thì để là "0x00">) 
+safeBatchTransferFrom(<người sở hữu>, <destination>, [<mảng các tokenId>], [<mảng số lượng>], <data>) => gửi 1 cục luôn
+balanceOfBatch([<mảng các address>],[<mảng tokenId đúng thứ tự với các address>]) => trả ra mảng các balance của address có tokenId đúng thứ tư
+uri(<tokenId>) => trả ra link to metadata file của tokenId đó
+VD: file metadata.json: 
+{
+    "name": "<name>",
+    "description": "<description>",
+    "image": "<link ảnh>",
+    "<key>": <value>
+}
+=> hàm safeTransferFrom có vai trò gửi an toàn. Trong quá khứ có rất nhiều vụ gửi token ERC1155 vào địa chỉ contract mà contract đó k hỗ trợ ERC1155 protocol thành ra nó k hiểu được nó nhận được cái gì. Hậu quả là đã token bị locked forever ở đó. Hàm có chữ safe sẽ báo lỗi và revert nếu gặp địa chỉ contract k hỗ trợ ERC1155. 
+Để 1 contract bth nhận được ERC1155 thì phải: 
+import "@openzeppelin/contracts/token/ERC1155/ERC1155Holder.sol";
+contract MyContract is ERC1155Holder { }
+deploy vào network -> bán trên opensea tương tự y như bán ERC721, đm nó lúc này link github lại đc
+Có thể chuyển NFT từ tài khoản này sang tài khoản khác chung 1 ví
+
+Để 1 smart contract nhận ETH, nó cần hàm receive() payable vì nó là native coin
+Còn ERC20 token thì mọi ví hay contract đều có thể nhận token mà k cần implement gì thêm, tương tự mọi fungible token chuẩn ERC20
+Nhưng NFT 721 và 1155 thì k như v, nếu NFT được implement chuẩn openzeppelin thì mọi địa chỉ ví đều có thể nhận NFT nhưng nếu là contract thì:
+=> Nếu người gửi sử dụng transferFrom để gửi NFT thì contract có thể thoải mái nhận mà k cần implement gì thêm dù k an toàn và có thể bị lock
+=> Nếu người gửi dùng safeTransferFrom thì contract phải implement thêm mới có thể nhận NFT nếu k sẽ revert
+
+
+
+# Token Ethereum
+Để tạo token thì phải tuân theo những chuẩn có sẵn. ERC (Ethereum Request for Comment) là hình thức phát hành nghiên cứu giống cái RFC nhưng là của riêng nền tảng ethereum mà thôi. ERC là 1 dạng của EIP(Ethereum Improvement Proposals) cũng giống như BIPs(Bitcoin Improvement Proposals) của bitcoin thôi. Cứ có 1 phát kiến mới để phát triển thì sẽ gọi nó là BIP<number> với number là số các phiên bản mới. Các con số đi sau ERC là số đăng ký phiên bản để phân biệt với các chuẩn ERC khác, phổ biến là ERC20, ERC223, ERC721,.. 
+ERC20 là chuẩn tạo token phổ biến nhất hiện nay của ethereum. Khi tạo token, 1 ví điện tử sẽ biết cách tương tác vói token nếu ta đang dùng chuẩn ERC20. Còn nếu ta k tuân theo chuẩn nào cả thì token sẽ là 1 điều mới mẻ chưa đc biết tới và chưa có ví điện tử nào nhận biết được nó nên ta sẽ k thể tương tác với nó bth thông qua ví đc. Ta sẽ phải tạo 1 ứng dụng ví như metamask có khả năng nhận diện điều mới mẻ đó .
+ERC20 bao gồm 6 hàm cơ bản: totalSupply, balanceOf, transfer, transferFrom, approve, allowance và 2 event Transfer và Approval.
+Tuy nhiên 8 thứ trên k bắt buộc phải có nhưng các hàm như: name, totalSupply, symbol, decimals là các hàm bắt buộc phải có tên đúng như v thì ví mới nhận dạng được token.
+Ta có thể nhét 8 thứ trên vào 1 interface IERC20 và cho contract override cho chuẩn
+
+Ethereum có 4 mạng thử nghiệm, mỗi mạng dùng cho mục đích khác nhau. Ta có thể vào faucet của các mạng để lấy ethereum cho testnet. 
+Rinkeby dùng cho client run geth
+Ropsten là POW testnet, gần giống với ethereum nhất
+=> kết nối ví metamask với remix chuyển sang mạng testnet cần dùng -> deploy và sử dụng bth
+Interface có thể kế thừa từ 1 interface khác
+
+Khi deploy, ta vào ví -> và thêm token tại địa chỉ là transaction của ta thì ví ta sẽ có token mới đó. Tuy nhiên khi check trên etherscan(testnet cx có etherscan để check transaction), tiền của ta đã có nhưng nó k có thanh khoản, chỉ đáng giá 0 ether. Để tiền của ta có thanh khoản thì ta phải xác định được mục đích nó sinh ra để làm gì. VD ta dùng token để chi trả cho việc truy cập vào 1 ứng dụng nào đó và khi mọi người cần nó, nhiều người dùng nó, nó sẽ bắt đầu có thanh khoản. Tức là ta cần xây dựng thêm 1 hệ thống để token được sử dụng
+
+-> Cơ chế trong dự án thực tế:
+- Khi burn token, họ burn của ai? Các nền tảng phải burn của chính họ. VD họ có sẵn 1 account có token dự phòng và tự burn trong account đó, hoặc họ có 1 pool hệ thống hay pool thưởng cho mọi người thì sẽ burn trong pool đó. Họ burn để cân bằng giá cho token. Tuy nhiên đội dev sẽ phải chịu việc giảm token để duy trì nền tảng.
+
+- Khi mint token, chỉ đội dev được mint? Thực tế nó vẫn là tập trung, do đó các dự án blockchain vẫn dựa vào niềm tin. Có nhiều cơ chế khác như thiết lập multisig nhiều người của đội dev mới cho mint, hoặc thiết kế mô hình DAO trao toàn quyền cho cộng đồng. Hoặc mint tất cả ra totalSupply rồi lock vào contract, sau đó unlock dần dần theo thuật toán. Dù là mint hay unlock đều có phần tập trung và phải dựa vào niềm tin.
+
+- Làm sao để 1 token có giá trị? 1 token khi có giá trị nếu có nhu cầu sử dụng nó. Sau đó 1 người cung token đó lên sàn (CEX phải xác thực, DEX thì tự do), những người khác cần token để dùng trong nền tảng sẽ vào mua lại và nó có thanh khoản thôi.
+
+
+
+# Kế thừa class
+
+
+
+# Dùng interface
+
+
+
+# Bảo mật Sol
+-> DenialOfService
+Khiến hàm gửi trả tiền luôn fail. Nếu nó gọi trong 1 hàm nào đó, hàm đó sẽ luôn fail theo.
+=> Fix bằng push versus pull
+
+-> Cản reentrancy hack
+Reentrancy gây ra bởi hàm nhận ethers tiếp tục gọi lại hàm withdraw
+=> Fix bằng cách dùng modifier
+=> Fix bằng cách đưa điều kiện check lên trước hàm call gửi ethers. Thì lần gọi sau đk đó sẽ fail
+
+-> Hide malicious code
+1 contract gọi hàm 1 contract khác nhưng địa chỉ lại là của 1 contract malicious có hàm tương tự
+=> Kbh được tin tưởng vào 1 external address, nhất là các address chưa được kiểm chứng
+
+-> isContract bypass
+Bypass được isContract nếu gọi từ constructor, nên logic hàm isContract đừng bh tin tưởng là luôn đúng
+
+-> Front running
+Miner chỉnh sửa thông tin tx và gửi lại với fee cao hơn. Nên các thông tin quan trọng truyền vào tham số hàm phải cẩn thận bị lộ r dùng bởi 1 người khác.
+=> Khi code contract luôn phải tính đến vc miner có thể tamper with tham số của tx và thay bằng 1 tx khác. 
+
+-> Unsafe randomness
+Dùng blocktimestamp, blockhash(block.number - 1) có thể điều khiển được, k thực sự random
+=> Dùng Oracle
+
+-> Unsafe delegatecall
+Các hàm delegatecall cần chú ý khi đổi các biến state var quan trọng. Phải đúng thứ tự state var.
+
+-> Honeypot
+Là trap để catch hacker lừa cho nó tưởng rằng contract này vulnerable trước reentrancy
+Lừa rằng contract có hàm bị reenatrancy nhưng rồi revert lại
+
+-> Timestamp manipulation
+=> K dùng timestamp tạo số random nếu k tuân thủ 15-second rule
+
+-> Signature replay attack
+Signature để rút tiền 1 lần từ contract bị dùng lại nhiều lần
+
+-> Unsafe txorigin:
+Phishing lừa người dùng thực hiện hàm của 1 contract mà gọi hàm 1 contract khác làm thỏa mãn tx.origin
+=> K thực hiện hàm của contract lạ mà kb nó làm gì. Unsafe txorigin là lỗi từ phía dev
+
+
+
+# Minimal Proxy Contract
+Trong Viper có 1 hàm là creat_forwarder_to dùng cơ chế minimal proxy contract. Ta sẽ mô phỏng lại trog solidity:
+
+Nếu ta có 1 contract mà muôn deploy multiple time thì nên dùng minimal proxy contract để deploy nó cho rẻ. Đây là cách rẻ nhất để deploy 1 contract nhiều lần(params có thể khác nhau).
+Minimal contract là proxy contract chỉ có duy nhất delegate call, k có thêm bất cứ hàm nào khác. 
+
+Cơ chế VD ta muốn clone 1 contract 100 lần:
+Ta deploy contract A đầy đủ code lên -> tạo ra contract factory có hàm tương tự create_forwarder_to -> gọi hàm đó truyền vào địa chỉ contract A -> hàm đó sẽ tạo ra 1 contract copy của contract A -> gọi nhiều lần thì có nhiều contract A. Ngay sau create_forwarder_to ta có gọi thêm hàm setup để set thêm các tham số cho contract mới
+Khi ta gọi hàm trong contract copy, nó thực chất gọi hàm trong contract A nhưng update var trong B
+=> Cơ chế của delegate call
+
+Tính chất: rẻ vì bên trong contract copy của A rất ít code vì toàn gọi delegate call; gọi hàm bên trong contract copy k ảnh hưởng đến contract A gốc vì delegate call chỉ gọi hàm còn state var riêng ở từng contract copy; constructor của contract A k được gọi;
+
+Nó khác với cách dùng bth mỗi lần gọi hàm ta truyền vào địa chỉ để gọi hàm ở địa chỉ đó. Ở đây ta truyền vào duy nhất 1 lần lúc deploy và nó có địa chỉ đó luôn và gọi được mọi hàm ở contract gốc luôn
+
+msg.data là abi encoded chỉ ra cho contract function nào với param nào được call. Nó thường tóm gọn trong 4 bytes và ta gọi 2 function khác nhau thì msg.data là khác nhau => Nếu ta gọi same function với same param thì msg.data có thể bị trùng
+Khi gọi 1 hàm thì msg.data dùng trong hàm chính là bytes4(keccak("<signature hàm đó>"))
+Nhiều lúc họ dùng sha3(msg.data, block.number) để làm identifier nhưng chỉ với mỗi block
+
+Nó gọi là proxy vì nó gọi thông qua 1 contract trung gian, gọi là minimal vì code cực ít, mỗi hàm nếu thích chỉ cần 2 dòng
+
+-> Upgradeable Proxy contract
+Bên trên là mỗi lần update là 1 contract mới chuẩn thì phải là dùng cùng 1 địa chỉ nhưng đổi được nội dung contract
+
+-> Dùng multi delegatecall
+Gọi delegatecall khác với call ở chỗ:
+Chỉ update state của contract gọi chứ k ảnh hưởng tới contract gốc, bao gồm msg.sender, msg.value, storage,..
+msg.sender trong hàm sẽ là của người gọi delegatecall chứ kp contract gọi vì nó như kiểu copy hàm của contract gốc vào và gọi trực tiếp chứ k forward gì cả. Lưu ý nó k copy state mà state contract kia độc lập và ban đầu là mặc định => như này mới đúng***
+
+Nhiều lúc ta muốn 1 contract thực hiện nhiều hàm cùng 1 lúc. Có nhiều cách để perform TH này:
+1) Contract X có 2 hàm A và B, contract X có thể tạo 1 hàm C bên trong gọi cả A và B, người dùng tương tác với hàm C để gọi cả A và B. Đó là 1 cách gọi nhiều hàm của 1 contract trong 1 tx. Nếu sử dụng upgradable contract, ta có thể viết thêm hàm C tùy ý nếu có nhu cầu sử dụng
+2) Viết contract Y kế thừa contract X, trong contract Y viết hàm C để người dùng gọi. Cách này y hệt cách trước. Người ta chỉ cần deploy mỗi Y thôi.
+3) Contract X có 2 hàm A và B, contract Y gọi 2 hàm A và B của contract X thông qua address của X trong hàm C. Người dùng sẽ gọi hàm C => đây là 1 cách rất phổ biến nhưng gặp nhược điểm cực lớn là msg.sender trong A và B là Y chứ kp người dùng. 
+VD: ta có 10 ethers trong contract X, ta gọi hàm rút thông qua contract Y sẽ k được vì msg.sender là Y, nó sẽ k pass qua điều kiện msg.sender phải là owner. Đây cũng là điều hiển nhiên vì lý do bảo mật
+4) Contract X có 2 hàm A và B, contract Y độc lập gọi 2 hàm A và B thông qua call. Tức là:
+X.call(A); X.call(B);
+Nó y hệt như cách 3 chả khác gì. Vì call cũng là 1 cách gọi hàm bth thôi, ta có thể gọi bằng tên nhưng phải định nghĩa contract trong cùng file khi gọi bằng tên nên cách dùng call chuẩn hơn.
+5) Contract X có 2 hàm A và B, contract Y gọi 2 hàm A và B thông qua call. Nhưng X kế thừa Y. Tức là trong Y gọi:
+address(this).call("...");
+=> Cách này tệ hơn cách 3 khi mà msg.sender vẫn là contract Y mà phải thêm điều kiện kế thừa chả có ích gì
+6) Contract X có 2 hàm A và B, contract Y độc lập gọi 2 hàm A và B thông qua delegatecall. Tức là:
+X.delegatecall(A); X.delegatecall(B);
+Tương tự cách 4 nhưng state của contract đổi lại là Y chứ kp X. Nên cách này chỉ dùng khi muốn khởi tạo nhiều contract giống y nhau thôi
+7) Tương tự như TH6, nhưng contract X kế thừa contract Y. Thế thì bên trong contract Y sẽ dùng kiểu:
+address(this).delegatecall(A); address(this).delegatecall(B);
+=> msg.sender là user, lại đổi state đúng của X. Cách này tốt nhất nhưng contract X phải biết mà kế thừa contract Y.
+
+=> Điều này đồng nghĩa ta k thể gom nhiều hàm của 1 contract thành 1 tx duy nhất 1 cách tự do được. Lý tưởng nhất là TH7 thì yêu cầu contract phải đồng ý kế thừa 1 contract Y gọi multidelegatecall.
+
+--> delegate call copy code và thứ tự các biến phải giống nhau, nên 1 contract delegatecall để đổi state từ 2 contract khác thì chả ra làm sao cả vì mỗi contract có cấu trúc biến khác nhau mà.
+
+--> Dùng multidelegate call giúp gọi nhiều hàm thành 1tx rất nguy hiểm. 
+VD: ta gọi hàm deposit 3 lần nhờ multidelegatecall  gửi vào 1ETH nhưng msg.value ta chỉ gửi 1 ở hàm gọi. Thành ra hàm deposit được gọi 3 lần với msg.value đều bằng 1. Rất dễ gây lỗi trong code, khi nó tưởng mình deposit 3 lần thành 3ETh nếu nó viết kiểu: balance[msg.sender]+=msg.value là toang.
+
+
+
+# Access private variable
+-> ref tới "Cơ chế lưu storage EVM.docx"
+
+
+
+# Các EIP khác
+Phân biệt: Ethereum Improvement Proposals(EIP) và Ethereum Request for Comments(ERC)
+ERC là định nghĩa các chuẩn cho việc sử dụng ethereum. Còn EIP định nghĩa ra các cải tiến trong ethereum, nó có thể là ERCs, thay đổi trong protocol or các programming tool or bất cứ 1 thứ gì trong hệ sinh thái ethereum
+=> Mọi ERC đều có EIP tương ứng như các token ta code theo chuẩn ERC-20 thì EIP là thứ công bố sự thay đổi đó. Nếu ta có phát kiến improvement mới thì cũng có thể share in EIPs.
+Về mặt code ta chỉ quan tâm ERC, còn về mặt 1 tài liệu bao trùm mọi sự thay đổi thì phải đọc document EIP của nó. Hiện giờ trên trang https://eips.ethereum.org/erc đã có tổng hợp rất nhiều chuẩn rồi. Các chuẩn ở final chính là đang chính thức được sử dụng rộng rãi
+
+-> EIP165
+Chuẩn EIP-165 là chuẩn để publish và xác định interface nào smart contract đang implement.
+
+-> EIP-2612 
+Hàm permit cải thiện giao diện người dùng giúp thực hiện 1 transaction duy nhất thay cho approve + transferFrom nên chỉ trả 1 lần fee, kp chờ nx
+
+Ta dùng eth-permit để sinh ra 3 tham số r, v, s => nên dùng cách này để approve mọi hàm khi ta làm ẩn trong app
+Mỗi lần ta gọi signERC2612Permit sẽ sinh ra các tham số r, s, v là như nhau. Khi ta dùng signature đó 1 lần r thì lần sau sẽ sinh ra r, v, s khác cái trước vì số nonce thay đổi
+
+-> EIP-1967
+Khi contract A delegatecall contract B, state của contract A sẽ giống contract B. Nhưng khi dùng upgradable ta muốn contract A lưu address của B mà chỉ admin được phép update.
+K thể lưu address vào state vì xung đột. Ta có thể lưu biến private const nhưng như v sẽ k thể đổi giá trị. 
+
+EIP1967 ra đời giúp lưu address vào 1 slot an toàn trong storage, nó đảm bảo slot đó kbh bị gán vào bởi compiler. 
+VD: TransparentUpgradeableProxy
+
+Nó cung vài slot an toàn:
+bytes32(uint256(keccak256('eip1967.proxy.implementation')) - 1)
+bytes32(uint256(keccak256('eip1967.proxy.beacon')) - 1)
+bytes32(uint256(keccak256('eip1967.proxy.admin')) - 1)
+
+
+
+# Upgradable contract
+Deploy 1 contract lên, xong về sau ta lại muốn chỉnh sửa code bên trong contract theo 1 logic mới chẳng hạn. 
+Tưởng dễ nhưng nhiều vấn đề cần giải quyết như tùy vào mức độ chỉnh sửa chỉ muốn thay đổi logic còn params giữ nguyên hay thay đổi params, thay đổi cả giá trị trả về hay không. Contract với data đơn giản dễ đổi hay contract lớn phức tạp. Địa chỉ thay đổi sang 1 contract khác hay vẫn muốn giữ địa chỉ contract cũ. Khi front-end gọi hàm của dự án thì gọi vào 1 địa chỉ thì địa chỉ đó là proxy contract hay là địa chỉ của contract gốc. 
+
+Cơ chế chung là: ta tạo ra 1 contract khác tương tự như v nhưng với logic mới theo ý ta, xong tạo ra 1 proxy contract có owner được quyền update địa chỉ contract để khi muốn gọi hàm nào thì call vào proxy contract để thực hiện trên contract logic mới chứ k dùng địa chỉ cũ nx. Hàm gọi đó sẽ dùng delegatecall để trong fallback. Điều này cũng được openzeppelin thực hiện sẵn và tối ưu hóa gas và tốc độ bằng assembly cho người dùng. 
+
+Giả sử k có delegatecall thì với 1 tư duy thông thường mà muốn update 1 smart contract không phải là không thể. Hướng đi là backup dữ liệu của smart contrac cũ về 1 database realtime, tạo và deploy 1 contract mới theo logic mới, deploy contract mới lên mạng và migrate đống dữ liệu đã backup lên, rồi thay đổi các thứ khác như frontend backend dùng dữ liệu địa chỉ mới và fix các thứ là sự khác biệt giữa 2 contract. 
+=> Tư duy này dùng được khi dữ liệu ít và smart contract mới phải tạo thêm hàm migrate tất cả dữ liệu lên. Phức tạp và k nên dùng vì tập trung quá.
+
+-> Dùng Easy Proxy với delegatecall => K ổn vì nếu có owner, state của contract sẽ đổi khi gọi hàm khác. Có nhiều cách khác, VD ta có thể check msg.sender fix bằng account nào được phép update chứ k lưu state là được.
+
+-> Dùng proxy contract với assembly (Phân tích)
+Các opcode liên quan:
+- calldatacopy(1,0,calldatasize()) => copy size of data từ calldata vị trí 0 vào memory từ vị trí 1
+- delegatecall(gas(),target,0,calldatasize(),0,0) => target là 1 địa chỉ, sẽ delegatecall contract tại địa chỉ target với input là memory từ 0 đến 0+calldatasize với gas là gas() trả ra lượng gas available hiện tại và kết quả output là lưu từ 0 -> 0+0 (2 tham số cuối) và trả ra 0 nếu error
+Full thông tin: https://docs.soliditylang.org/en/v0.5.3/assembly.html
+- returndatacopy(0,0,returndatasize()) => copy size of last returndata từ vị trí 0 vào memory từ vị trí 0. Vì data dù return về nhưng chưa lưu được nên dùng hàm này để lưu
+- revert(0,returndatasize()) => kết thúc và revert state hàm này và trả ra data từ vị trí 0 đến vị trí 0+size of last return data
+
+--> Phiên bản proxy sơ khai nhất như dưới:
+pragma solidity >=0.8.3;
+contract Proxy {
+    address immutable public implementation;
+    event Received(uint indexed value, address indexed sender, bytes data);
+    constructor(address _implementation) {
+        implementation = _implementation;
+    }
+    fallback() external payable {
+        address target = implementation;
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            calldatacopy(0, 0, calldatasize())
+            let result := delegatecall(gas(), target, 0, calldatasize(), 0, 0)
+            returndatacopy(0, 0, returndatasize())
+            switch result
+            case 0 {revert(0, returndatasize())}
+            default {return (0, returndatasize())}
+        }
+    }
+    receive() external payable {
+        emit Received(msg.value, msg.sender, "");
+    }
+}
+=> Ở đây những gì nó làm là có 1 cái address k thể thay đổi. Từ khóa immutable khiến cho biến chỉ có thể khởi tạo giá trị ban đầu or trong constructor 1 lần thôi. Và khi ta gọi hàm gì ở 1 contract nào thì thay vì v, ta khởi tạo contract này truyền vào địa chỉ contract đó. R gọi thông qua địa chỉ contract này. Hàm k tồn tại sẽ delegatecall sang địa chỉ là implementation. Ở VD này chả có ứng dụng gì vì dùng immutable, nó chỉ forward luôn thôi.
+
+Mở rộng hơn là proxy dùng để update contract. Nó nhận vào địa chỉ của contract cần dùng và sẽ delegatecall gọi các hàm trong đó; Khi đó bộ nhớ của contract sẽ lưu thêm các biến của contract mà nó gọi vào delegatecall cùng thứ tự bộ nhớ như contract đó; Nên nhớ là contract proxy k hề có các hàm hay biến nào giống như contract SampleLogic1 nhưng ta vẫn có thể gọi hàm(sẽ chạy vào code của SampleLogic1) và lưu state(ở trong Proxy nhưng giống như SampleLogic1); Do đó nếu dùng remix thì phải dùng At Adress để thao tác còn trong code JS thì gọi được bình thường(vì nó gọi vào fallback); Nên nhớ do state chỉ được lưu trong bộ nhớ tại contract có 1 địa chỉ duy nhất là contract proxy nên các biến được lưu ở 1 vị trí k đổi và khi ta chuyển sang contract khác thì ta chỉ đổi logic còn data vẫn lưu ở trong contract proxy đó mà thôi; Trong contract ta có dùng 1 biến là _IMPLEMENTATION_SLOT là vị trí bộ nhớ mà khi cần lấy ta dùng sload assembly để tránh xung đột lưu trữ(thực ra k qtr); Proxy có hàm upgradeTo để update địa chỉ contract mới mà proxy gọi; Sau khi gán địa chỉ contract thực thi cho Proxy thì bất cứ khi nào gọi hàm đó trong proxy sẽ luôn gọi vào hàm mới của nó; Do signature các hàm trong proxy và các hàm trong contract gốc phải khác nhau nên đôi khi họ thêm các số kiểu id vào cuối hàm trong proxy kiểu cố tình để đổi signature cho khác đi, nếu k nó sẽ gọi nhầm vào hàm contract proxy thay vì contract gốc
+
+=> Để tạo 1 upgradable contract còn phức tạp hơn v nhiều. VD phải thêm Owner cho Proxy vì k thể để ai cũng upgrade contract của ta được. Ta có thể dùng các thứ implement sẵn từ openzeppelin => Thật ra contract kiểu trên khá ổn r, thêm ownable nx là dùng đc.
+
+--> Chú ý call có 2 cách: 
+1) ContractOrInterface(<address>).<function>(<params>);
+2) ContractOrInterface public CoI = ContractOrInterface(<address>); từ đó trở đi có thể gọi: CoI.<function>(<params>);
+
+-> VD UpgradeabilityContract hoàn chỉnh
+Khi tạo contract, nó thường tư duy kiểu kế thừa khi mà có thể dùng lại ở bất cứ giai đoạn nào. Chẳng hạn nó muốn thêm 1 tính năng mới cho contract cũ thì nó tạo ra 1 contract mới kế thừa contract cũ r viêt thêm các tính năng or override các tính năng cũ, r lại lồng kế thừa để thêm tiếp tính năng. Bởi vì có thể ta k muốn thêm tính năng đó mà về sau tự dưng lại muốn thêm 1 tính năng khác nx cơ thì vc kế thừa nhiều cấp bậc sẽ giúp tái sử dụng ở mức tối đa -> xàm lol
+VD: Proxy là 1 abstract class chứa hàm gọi delegatecall và gọi trong fallback -> UpgradeableProxy kế thừa Proxy thêm _IMPLEMENTATION_SLOT, load và set và upgrade địa chỉ. Tức là proxy ban đầu k có tính năng update và cái này làm nó có thể update -> TransparentUpgradeableProxy kế thừa từ UpgradeableProxy thêm tính năng admin là owner của contract mà chỉ owner mới được đổi địa chỉ, làm điều này bằng cách định nghĩa lại các hàm set cho thêm modifier ifAdmin là xong, admin cũng phải lưu qua 1 slot chứ k dùng 1 biến lưu -> DAIProxy là proxy dùng trong dự án của ta kế thừa từ TransparentUpgradeableProxy có thể thêm tính năng gì nếu thích
+
+Admin --call--> DaiProxy == TransparentUpgradeableProxy == UpgradeableProxy == Proxy --delegatecall--> real contract
+
+=> Tại sao nó lại chia ra ProxyAdmin trong khi có thể dùng trực tiếp TransparentUpgradeableProxy. Nó làm v để tách rời logic mà chỉ admin thực hiện được ra 1 contract riêng. Admin chỉ tương tác với contract ProxyAdmin thay vì cả contract TransparentUpgradeableProxy. Trong TransparentUpgradeableProxy thì admin chỉ có vai trò thực hiện các hàm liên quan của admin như đổi admin mới và upgrade cái địa chỉ contract implementation mới mà thôi, còn gọi vào các hàm khác sẽ sang fallback gọi delegatecall contract chính. Họ khuyến khích là chỉ dùng 1 dedicated addresss(tk chuyên dụng) làm admin cho 1 contract mà thôi và tk đó k được làm chức năng gì khác. 
+Nếu k làm v, TransparentUpgradeableProxy có thể dùng 1 biến owner cho các hàm của admin để thay thế nhưng sẽ rối vì k tách ra contract riêng, khi admin gọi thông qua interface sẽ thắc mắc là hàm này k rõ admin có được gọi hay k. 
+
+Contract Initializable là contract check 1 hàm initialize của contract(nếu có) sẽ chỉ được gọi 1 lần. VD: 1 contract set owner trong hàm initialize thì chỉ được gọi hàm đó 1 lần thì ta sẽ kế thừa để đảm bảo hàm đó chỉ được gọi 1 lần, thêm modifier initializer vào
+
+--> Cách viết contract upgradable mới:
+Frontend gọi vào address contract TransparentUpgradeableProxy chứ kp địa chỉ contract gốc, cú pháp gọi ở frontend k đổi, cứ như là tương tác trực tiếp ấy
+
+Trong hardhat có tool giúp đơn giản việc upgradable contract:
+Thật ra là ta tùy ý viết trong script deploy. Với vc deploy lần đầu tiên, ta sẽ gọi upgrades.deployProxy (upgrades là biến hardhat hỗ trợ proxy phải npm i về) là hàm của hardhat thực ra là tự động gọi deploy contract gốc và contract proxy và setImplementation hộ cho ta. Các lần sau ta sửa contract sẽ chạy script upgrade auction thì gọi hàm upgrades.upgradeProxy() thực ra cũng là gọi hàm setImplementation ngầm hộ ta. Bản chất k khác gì nhưng nó tạo ra các hàm tầng cao hơn giúp ta dễ sử dụng.
+=> ref tới "Projects / Trava-Core" dùng hardhat + solidity
+
+Khi muốn contract có khả năng upgradable thì khi dùng các contract có sẵn khác của Openzepplin, cũng phải dùng các contract có sẵn các tính năng upgradeable của openzeppelin. Các contract trong Openzeppelin có 2 phiên bản, Vd: ReentrancyGuardUpgradeable và ReentrancyGuard chẳng hạn
+
+***Khi viết upgrade cần tuân thủ quy tắc: Không được thay đổi biến. Nếu ta muốn thêm biến mới thì phải khai báo thêm ở cuối file. Nếu muốn thêm function mới thì nên thêm ở cuối file để phân biệt. Có thể tùy ý xóa function cũ thoải mái. Các function cũ muốn chỉnh sửa kiểu thêm tham số hay bớt tham số hoàn toàn được vì bản chất nó tạo ra 1 function khác hoàn toàn (nên nhớ là proxy contract nó gọi vào fallback nên thêm xóa có ảnh hưởng gì đâu)
+
+-> ***Quy trình tạo 1 contract mới và có khả năng upgradable:
+Tạo contract như bth, nếu kế thừa openzeppelin thì cho kế thừa các contract upgradable
+Nếu có constructor thì xóa đi và cho kế thừa contract Initializable rồi viết logic constructor trong hàm initialize
+Deploy contract đó là lấy address x
+
+C1: 
+Deploy contract TransparentUpgradeableProxy và truyền vào địa chỉ của admin, truyền vào cả address x của contract
+Giả sử sau này update contract, ta deploy lại ra address y
+Admin của TransparentUpgradeableProxy gọi hàm upgradeTo để update địa chỉ từ x thành y
+
+C2:
+Deploy contract ProxyAdmin và người deploy là owner
+Deploy contract TransparentUpgradeableProxy truyền admin là address ProxyAdmin, truyền cả address x của contract
+Giả sử sau này update contract, ta deploy lại ra address y
+Owner của ProxyAdmin có thể gọi hàm upgrade để update địa chỉ từ x thành y
+
+=> C1 sử dụng bth, C2 sử dụng để tách các hàm admin có thể gọi ra contract riêng như đã nói bên trên.
+=> Contract có chữ Upgradable đằng sau chỉ khác contract thg là logic hàm constructor được đặt trong hàm initialize của contract Initializable. Khi tự code contract ta k cần đặt tên như v.
+=> Contract X kế thừa contract YUpgradable thực tế chả có gì đặc biệt, chỉ là logic constructor của YUpgradable được dùng trong hàm initilalize và contract X phải được khởi tạo thông qua delegatecall mà thôi.
+
+
+
+# Dùng liteserver
+-> BrowserSync là công cụ giúp phát triển web mà thôi. Nó như là live reload extension của VSC khi sửa code và save phát là trang web tự động reload lại. BrowserSync giúp web tự động reload khi sửa source, thao tác ở 1 trang web sẽ thể hiện trên nhiều cửa sổ trình duyệt và thiết bị khác, mô phỏng tốc độ kết nối mạng nhanh hay chậm,... => Nếu dùng react tự có sẵn rồi
+Cơ chế là nó dùng WebSocket để detect change mà reload đó
+
+-> Lite-server: sử dụng browserSync library, giả lập 1 server mà ta deploy lên cho người sử dụng, hỗ trợ Single Page App(SPA)
+npm install lite-server --save-dev 
+=> Lệnh --save-dev để lưu câu lệnh chạy lite server vào file package.json là
+"scripts": {
+  "dev": "lite-server"
+} 
+=> chạy bằng: npm run dev
+Còn nếu dùng npm install --global lite-server thì lite-server sẽ là lệnh global và chạy với: lite-server
+Để dùng được ta phải tạo thêm file bs-config.json và thêm thuộc tính server: baseDir là dir chứa các file html, css, js để hiển thị ở front end
+
+Phân biệt: 
+Việc dùng ALT+L+O 1 file html chỉ đơn giản là mở file đó lên trên trình duyệt hiển thị ra thông qua live server trên 1 port. Nó cũng gửi request và máy ta gửi file đó lên cho nó chạy trên 1 port.
+Dùng Lite server cũng tương tự được config GET là khi người dùng request vào cổng nào thì gửi lại file html được config trong bs-config.json.
+
+1 ứng dụng có thể k có server k -> No, 1 ứng dụng luôn luôn cần có 1 server kể cả front hay back. Việc ta chỉ code backend và upload cái file html/js lên 000webhostapp tức là nó tạo ra 1 server có sẵn tự động gửi file index.html lên giống như lite server v nhưng được host domain. Do ta k code backend nên làm v k tùy chỉnh được. Nếu ta code backend server nx, xong cấu hình nó thành public server, thế là ng khác truy cập được vào thôi. Tức là 1 cái tự tạo server cho ta với method GET là file index, 1 cái là ta tự tạo api server xử lý request khác nhau.
+
+-> Hiểu bản chất: Tại sao Web3js dùng được ở front end?
+Thật ra nodejs ra đời đã khiến ranh giới front-end và back-end k còn rõ ràng. Ta đã biết là nodejs code có mỗi 1 tí, quan trọng là nó có nhiều package, có các package chỉ hỗ trợ cho server, package tạo server như express nhưng lại có các package chỉ dùng cho client như react. Và nếu nodejs có module code front-end như v thì trong quá trình sử dụng front end của nodejs, có thể dùng đc 1 số module khác của nodejs. VD: module uuidv4 để sinh số ngẫu nhiên sẽ được dùng cả ở backend server, cả ở frontend với điều kiện front-end đó chạy từ nodejs như create-react-app. Tức là module nào hỗ trợ cả import(front) và require(back) thì dùng được cả ở frontend và backend. Nếu k chạy frontend qua nodejs thì chỉ các module nào có cdn thì mới dùng đc thôi.
+CDN: với cdn thì có các cdn hỗ trợ cho html như bootstrap, có cdn hỗ trợ cho js như web3js. 
+
+VD Có 3 cách để tạo 1 ứng dụng react: 1 là dùng cdn remote thì dùng cdn ở file jsx như bth là dùng được với html thuần; 2 là tải các file react.min.js về local và script tới nó; 3 là dùng package của nodejs để tạo 1 dự án react.
+=> Web3js dùng được ở client là chuyện hiển nhiên. Nếu dùng ở server or code module front-end như react của nodejs thì dùng TT được, nếu dùng html/js bth thì dùng cdn của web3 or tải file web3.min.js về để link cx đc
+
+Hiểu bản chất như v ta có thể tùy biến mọi thứ theo ý ta. Tổng kết:
+Dùng html/css/js file riêng, nếu muốn dùng các thư viện hỗ trợ html hay js thì dùng cdn or copy file remote đó vào local. 
+Dùng front-end module của nodejs dùng được tất cả module khác của nodejs đươc ở front end đó luôn, nếu thư viện đó cho phép import.
+=> Đó là code front end, còn server backend thì vẫn phải dùng 1 file riêng để chạy server và xử lý http request. 
+
+http server và express server đều có thể implement với request nào thì gửi file html nào đi
+lite server cũng điều khiển được cung ra file nào, nó kiểu apache server sẽ serve 1 thư mục ấy
+json-server thì k điều khiển được, nó chỉ dùng để test fetch api từ 1 file json thôi
+
+=> Đó mới chỉ là file html/js riêng để dùng. Kết nối react app của nodejs với server cx tương tự. Lúc này ta k cần server gửi lại file html liên tục cho client nx mà client vào thì sẽ request API đến server để lấy phần data mà thôi (gọi là AJAX).
+
+
+
+# Bản chất web3 esmodule và commonjs
+-> ES Module và CommonJS
+Hàm import chỉ được dùng trong 1 module (ES Module), còn require k được định nghĩa ở front-end mà chỉ định nghĩa trong NodeJS code server (CommonJS)
+
+- Thuở đầu JS chỉ dùng làm frontend, 1 file html js có thể import nhiều file js khác, họ làm v để với mục đích phân hóa module thay vì viết chung 1 file nên gọi là kiểu ES module. Do đó khi thao tác với frontend thuần, ta import 1 file js khác thì file js mà có export đó phải có type module.
+=> Thực tế mặc định code frontend luôn dùng type module mà ta k cần ghi gì thêm nhưng nhiều lúc bị lỗi ta phải specific rõ mới được. Vd: <script type="module">...</script>
+Khi frontend load script type module, nó luôn được load kiểu defer. Tức là: script được load song song với html chứ k chờ đợi; Khi html load hết, script mới thực thi nên đặt ở đâu cũng được; Thứ tự script được bảo toàn, script load trước vẫn được thực thi trước. 
+
+- Khi thao tác với backend, ta dùng require thoải mái vì NodeJS support CommonJS. Thực tế nó sẽ convert sang module bth khi chạy.
+Khi thao tác với front-end module của NodeJS, ta có thể dùng cả require và import vì import là của frontend luôn dùng được r nhưng package của nodejs cũng support luôn CommonJS nên vẫn dùng được require, thg thì dùng import { } from những thứ cần dùng thôi
+
+Như v để dùng được web3 tương tác với blockchain giả sử rinkeby đi thì: hoặc là code nó ở backend file.js thêm module web3 thoải mái, hoặc là tạo front end là 1 module từ NodeJS như create-react-app thì cũng dùng được web3 như ý (vì nó là package support cả require và import).
+
+-> Giả sử ta dùng web3 trong nodejs k dùng front end mà ta muốn gọi 1 hàm view thì rất ok, nhưng gọi 1 transaction thì k được vì provider phải chứa msg.sender để gọi 1 transaction. Khi web3 được dùng thông qua infura url bình thường thì nó mặc định gọi từ địa chỉ 0x00 -> có thể check điều này bằng việc in ra msg.sender hay nói cách khác là địa chỉ không xác định, đơn giản là gọi thôi
+Tức là provider cũng có 2 loại, 1 loại kiểu tương tác lấy thông tin thôi, còn muốn change state thì phải dùng provider gắn liền với 1 tài khoản như window.ethereum => tức là phải dùng front-end của nodejs để làm điều này(or front-end thuần có cdn web3) or import hẳn private key vào server mà thực hiện.
+=> Tuy nhiên thật ra, INFURA bản chât là cung 1 node chứ kp 1 tk, nó là 1 node trên mạng luôn và node này có 1 cái url, ta dùng tài khoản của ta connect vào node này send tx tới network được => Để backend nodeJS cũng call transaction được, ta có thể dùng hàm signTransaction và sendTransaction có pivkey là được thôi
+
+Vì v, kp là package nào của nodejs cũng dùng được ở mọi nơi. Giả sử muốn dùng eth-permit đi thì nó là 1 package của NodeJS nên để dùng nó thì buộc dùng frontend package của NodeJS or backend NodeJS(vì k support cdn) nhưng nó yêu cầu cung provider là người dùng nào đó để nó dùng provider đó tạo transaction cho hàm permit => nếu dùng backend thì để gọi transaction như v phải thông qua 2 hàm signTransaction và sendTransaction nhưng eth-permit k support require của commonjs (dù là 1 package của nodejs) -> buộc dùng front-end của Nodejs nếu muốn dùng eth-permit có sẵn
+=> Ta hiểu bản chất mới có thể biết được phải làm như thế nào. Tương tự trong web3 library có rất nhiều hàm nhưng kp hàm nào ta cũng dùng được ở backend. VD hàm web3.eth.accounts sẽ k trả ra gì cả ở backend vì ta chả có accounts nào cả(trừ khi tự code sinh account or nhúng pivkey vào).
+
+
+
+# Tool Scaffold
+
+
+
+## Các tool khác
+# Dùng ganache
+# Dùng truffle
+# Dùng hardhat
+# Tool Geth
+# CreateFromScratch
+
+# Gasless tx
+# Project BK Swap
+
+
+
+# AAVE dYdX
+Tương tác với 2 contract nền tảng dùng flashloan
+Dùng truffle forkmain net để test
+
+
+
+# Tương tác Uniswap
+-> Cách dùng ganache-cli fork mainnet kết hợp truffle, từ đó lấy DAI và giao dịch trên phiên bản mainnet fork hiện tại. Vd: PROJECT ID = INFURA_API_KEY = 334b94e6fd54411ea35f426ecaf0099d
+=> install truffle và ganache-cli => edit truffle-config là dùng mạng mainet_fork cần đúng 3 thông số như bth là host, port, network_id với network_id bất kỳ khác các cái đã có thì lấy 999 đi; host và port lấy của ganache thì host hiển nhiên là localhost còn port trên gui là 7545, port ganache trên cli là 8545 => cx chỉ là bảo dùng blockchain network của ganache mà thôi, sau đó ta fork sau
+
+Fork mainnet bằng ganache có lợi là ganache là tool vốn để tạo blockchain phục vụ test development. Khi fork thì state của blockchain có y nguyên như mainnet hiện tại nhưng ta lại unlock được bất cứ account nào ta muốn, làm bất cứ điều gì trên blockchain này như là đang thao tác với mainnet nhưng k ảnh hưởng tới mainnet
+
+ganache-cli --fork https://mainnet.infura.io/v3/$INFURA_API_KEY \
+--unlock $<account muốn unlock> \
+--networkId 999 
+=> là chạy được blockchain mainnet fork
+
+-> Lấy balance of DAI và chuyển thử DAI từ account này sang account khác. Phải chọn account nào trên mainnet có sẵn DAI và address gốc của DAI để viết test
+
+npx truffle compile
+npx truffle test <link file test> --network mainnet_fork
+
+-> Test hàm swapExactTokenForToken trong uniswap. Chú ý chọn account có DAI để swap lấy WBTC nhưng account đó cũng phải có ETH vì nếu k sẽ k trả đc fee giao dịch. Ta phải unlock account đó.
+Khi test, nó chạy liên tục từ trên xuống và lưu trạng thái đó vào network, mạng vẫn luôn chạy. VD ta chạy test 2 lần và trong test viét A gửi cho B 1 DAI => sau khi gọi 2 lần thì A đã gửi B 2 DAI nhé
+
+Tình huống: ta có 1000DAI và 0Ether và muốn add liquidity cho uniswap
+Ta sẽ swap 500DAI vào uniswap để nhận về chẳng hạn 4.76Ether thành ra ta còn 500DAI và 4.76Ether thì ta addLiquidity nhưng uniswap lúc này k nhận toàn bộ số coin đó chẳng hạn nó nhận hết DAI r ta còn dư 0.23Ether
+=> Như v k tối ưu, ta cần tạo ra 1 hàm giúp trader optimal one-sided supply rằng có thể addLiquidity chỉ bằng 1 đồng coin với cơ chế như trên nhưng tối ưu là pool nhận hết số coin đó chứ k trả dư lại
+
+Chú ý là x*y=k thì k là hằng số và mỗi khi swap thì tỉ lệ k sẽ thay đổi là phần thưởng phí cho mọi người đó
+Ban đầu: K=A*B
+Về sau: K=(A+(1-f)s)*(B-b) => Với A,B là token trong pool, s là số tiền tokenA ta cần gửi vào để swap, b là số tokenB ta sẽ nhận về để có đúng tỉ lệ; f là 0.3%
+Tỉ lệ về sau là: (A+s)/(B-b)=(A-s)/b
+Kết quả thì s khoản tokenA ta cần gửi vào để swap = nghiệm pt bậc 2
+=> Viết hẳn contract cho swap one-sided luôn 
+Trên mainnet đã có người làm cái này publish lên r
+
+Flash Swap: borrower vay và trả trong cùng 1 transaction. Họ vay và dùng làm gì đó ngay lập tức và trả lại tiền + lãi trong cùng 1 transaction. VD: 1 borrower vay 100DAI của AAVE với Flash Loans -> đi qua uniswap mua 100 token A -> đi qua Mooniswap để bán 100 token A được 110 DAI -> cuối transaction đó, họ trả 100 DAI cho AAVE và 1 DAI là fee-> borrower lãi 9 DAI => đó là 1 use case họ mua bán dựa trên sự chênh lệch giá của 2 platform khác nhau mà k bỏ ra đồng vốn nào hết.
+Flash Swap giúp tạo sự công bằng vì uniswap bị chênh giá nhiều, trong khi những người nào có coin thì họ mới có thể mua sàn này swap sàn kia để kiếm lời chênh lệch giá. Những người k có token đó thì k kiếm lời được thì bất công. Flash swap giúp giải quyết điều đó rằng bất cứ ai cũng kiếm lời đc.
+Điều đặc biệt là flashswap là miễn phí với điều kiện là người dùng trả lại đúng lượng token vay ban đầu ở cuối giao dịch
+
+Các phiên bản cũ của Uniswap kém về hiệu quả sử dụng vốn vì vốn họ cung vào pool k được sử dụng. Uniswap v3 giải quyết bằng cách cho phép các LP cung thanh khoản trong phạm vi giá mà họ đặt ra, tức là thanh khoản tập trung hơn trong phạm vi giá mà hầu hết các hoạt động giao dịch diễn ra. 
+Tức là mỗi Uniswap LP có vị thế là duy nhất vì mỗi người gửi tiền có thể đặt phạm vi giá của riêng họ. Nó như kiểu NFT v của riêng mỗi LP. Ở V2 thì LP có thể gửi vào AAVE or MakerDAO làm ts thế chấp nhưng V3 thì k vì mỗi vị thế là duy nhất.  
+Uniswap v3 cũng triển khai trên layer 2 Optimistic Rollup. 
+
+Khi bơm tiền vào bể, tốt nhất là lúc giá đang ổn định, vì về sau giá tăng hay giảm thì các LP đều phải chịu impermanent loss. Nếu nó quay lại giá ban đầu khi cung vào bể thì lãi fee, nếu nó k quay lại nx thì lỗ
+
+
+
+# Tương tác Curve
+Khi trade 2 đồng stable coin trên Uniswap VD 1,000,000 DAI ta chỉ nhận lại 975,436 USDC trong khi về lý thuyết 2 đồng coin giá ngang nhau. Khi đó lựa chọn tốt hơn là trade trên curve. Nó giúp trade 2 đồng có giá ngang nhau với minimal loss.
+NN vì Uniswap càng trade nhiều thì loss càng nhiều như trên ta trade 1 triệu DAI lận. Nhưng trên curve thì ta có thể nhận lại y nguyên thậm chí là nhiều hơn 1 triệu USDC. Trên đồ thị của uniswap nó cong còn trên Curve nó sát hơn vào 2 trục và phần nằm giữa của nó gần như 1 đường chéo x+y=const dẫn đến nếu ta trade stable coin trên cùng chéo đó thì số tiền nhận ra coi như bằng số tiền nhận vào luôn. Đương nhiên phương trình của nó cũng khác
+=> Ref tới "Tương tác Curve / Cơ chế.png"
+Trong Curve có rất nhiều pool, mỗi pool chứa 1 group các token ngang giá. VD 3pool là pool chứa 3 token DAI, USDC, USDT
+
+-> Chạy Vyper: Khi chạy truffle chỉ cần trong máy có compiler của Vyper rồi thì nó tự compile vyper dù ta k set nó trong config
+
+Để compile VD ở Th này:
+-> npm install bn.js => chứ kp bn
+-> ganache-cli --fork https://mainnet.infura.io/v3/334b94e6fd54411ea35f426ecaf0099d --unlock 0x3f5CE5FBFe3E9af3971dD833D26bA9b5C936f0bE --networkId 999 => ở đây ta unlock USDC_WHALE
+-> npx truffle test ./test/test-curve-exchange.js --network mainnet_fork => là chạy test hàm này
+
+-> Cơ chế: Ta muốn trade 2 đồng stable coin với giá ngang nhau 1 DAI ra 1 USDC thì dùng x+y=C với C là tổng số coin trong pool. VD: x+y=100 thì đổi 1 DAI sẽ ra đúng 1 USDC. Nhưng thực tế có sự chênh lệch VD 1 DAI = 1.01$ và 1 USDC = 0.99$ thì người ta sẽ đổi hết lấy đồng có giá trị cao hơn và chẳng mấy chốc pool sẽ hết đồng có giá trị cao.
+Bình thường nhu cầu đổi 2 đồng này là như nhau. Nên để tránh tình trạng đổi như trên, họ dùng hết hợp x+y=C ở đoạn giữa và 2 mép sẽ dùng xy=D để tránh người dùng chơi đểu như v. Còn thông thường đổi sẽ rơi vào giữa, còn ai đổi hết đồng lớn hơn thì k được vì tỉ giá đắt dần. Họ sẽ tạo ra 1 phương trình đồ thị giống uniswap nhưng đoạn giữa dài ra và xấp xỉ đường cheo x+y=C
+Để làm được điều đó: x+y=D; xy=(D/2)^2; => x+y+xy=D+(D/2)^2 => tuy nhiên đồ thị vẫn giống uniswap, họ phải tăng phần x+y=D lên bằng cách nhân thêm X
+=> X(x+y)+xy=XD+(D/2)^2 -> X = 0 thì đồ thị còn xy=(D/2)^2 hệt uniswap -> X=vô cực dương thì X(x+y)=XD còn phần nhân nhỏ bỏ đi sẽ hệt như đường thẳng -> chỉnh X tăng dần làm graph sẽ phẳng dần đổi từ uniswap về constant sum
+
+Ta muốn là khi X nhỏ thì nó giống như uniswap nhưng nếu x+y lớn thì lại k giống uniswap nx -> fix bằng cách ta lấy riêng nó ra X(x+y)=XD => chuẩn hóa thành X(x+y)/D=XD -> XD(x+y)=X*D^2 thế ngược lại DX(x+y)+xy=XD^2+(D/2)^2
+=> Đặt X = Axy/(D/2)^2 -> thế vào -> nhân D/xy 2 vế -> rút gọn thành PT cuối là A*2^2(x+y)+D=AD*2^2+(D/2)^2*D/xy => là PT cuối trong whitepaper -> vẽ nó ra được graph như ý
+A = 0 -> xy=K
+A = vô cực lớn -> x+y=C
+=> Lập được PT toán học
+
+Để add liquidity: vào curve.fi rồi addLiquidity và nhận về LP token. Ta cung vào 1 lượng như nhau các stable coin thì cung lượng stable coin nào có balance càng ít trong pool thì sẽ càng nhận được nhiều LP token hơn. Lượng LP token thể hiện phần trăm sở hữu trong pool từng loại coin. Nó cũng cho phép ta tùy chọn chỉ rút hết 1 loại coin nào cũng được
+
+
+
+# Other
+-> Để liên kết 1 trang web với ví meta mask(để dùng các chức năng của ví), chỉ cần mở extension và chủ động liên kết với trang web.
+Cách khác là dùng JS: ethereum.enabled(); or phiên bản mới dùng: ethereum.request({ method: 'eth_requestAccounts' }) sau đó có thể dùng mọi lệnh js để thao tác với meta mask ở trang web đó. 1 số trang như remix thì phải reset lại web mới thao tác đc với meta mask
+Để sign 1 transaction bằng address account trong ví của ta và verify nó bằng giao diện có sẵn: phải có 1 ví meta mask -> vào ví bằng web: https://www.myetherwallet.com/wallet -> vào message r sign và verify. Signature sẽ ở dạng json.
+=> cách sign với code: ethereum.request({ method: "personal_sign", params: [<account sign>, <hash>]}).then(console.log); 
+
+-> Thanh khoản(Liquidity) là từ chỉ mức độ lưu động của 1 tài sản bất kỳ có thể mua bán trên thị trường mà giá k bị ảnh hưởng nh. Hay là khả năng chuyển đổi thành tiền mặt của 1 tài sản.
+Nói chuẩn hơn, 1 thứ có thanh khoản cao thì có thể dễ dàng bán nó vì bên nhu cầu mua nó là đủ cho vc bán. Ngược lại 1 thứ gì đó t muốn bán ra 5 phần, mà thị trường lại chỉ cần mua 4 phần thì thứ đó có thanh khoản thấp, vc trao đổi là rất khó khăn. Do tiền mặt nhu cầu kbh đổi mà giá trị lại cố định nên có thanh khoản cao nhất
+VD: Bob có 5 token, thấy giá tăng, Bob bán ra kiếm lời
+-> thị trường có đủ ng mua-> Bob nhanh chóng bán hết-> giao dịch của Bob k ảnh hưởng đến thị trường vì thị trường có đủ thanh khoản để thực hiện giao dịch của Bob
+-> thị trường k có đủ ng mua -> họ thấy rằng: giá cao thế thì ai mà mua -> Bob phải hạ giá token xuống để bán đc và vc làm đó sẽ ảnh hưởng đến giá token đó hiện tại trên thị trường
+-> TH lý tưởng là giá đặt mua và giá chào bán là ngang nhau
+-> tính thanh khoản vô cùng quan trọng quyết định ta có thể gia nhập hay thoát khỏi thị trường. Thanh khoản cao đảm bảo giá cả ổn định vì giao dịch luôn có đủ thanh khoản để thực hiện nên sẽ k ảnh hưởng giá cả, công bằng cho mọi người(người bán sẽ bán với giá cạnh tranh k bị thua lỗ), người mua sẽ trả giá cao hơn; thời gian giao dịch nhanh hơn.
+
+-> Automated Market Maker(AMM) là công cụ đem lại tính thanh khoản tự động cho các sàn giao dịch. Nó là 1 sàn giao dịch phi tập trung vượt trội. VD: uniswap, sushiswap,..
+Các sàn giao dịch thiếu đi sự ẩn danh vì tạo tk người dùng đã phải cung cấp thông tin cho sàn và nếu muốn, người ta vẫn truy ra được danh tính của chủ tk. Chưa kể sàn bị hack, lộ danh tính người dùng, giải quyết với AMM. 
+Thông thường, giá đặt mua và đặt bán là do người dùng đặt ra và treo lên, nếu ai có nhu cầu mua or bán thì lệnh khớp và giao dịch thực hiện -> AMM sẽ k có lệnh nào được đặt và giá mua, giá bán là bằng nhau và ai có nhu cầu sẽ đặt lệnh và khớp ngay lập tức -> giá của loại tiền sẽ được chỉnh theo thuật toán
+=> tức là trong AMM k hề có lệnh mua bán, nó chỉ là việc gửi tiền vào pool chứa 2 loại tiền điện tử và rút ra 1 loại -> vc rút tiền sẽ ảnh hưởng giá tiền. VD: 1 pool có 1000 USDT và 1000 DAI(2 loại token). Ta gửi vào đó 100 DAI và muốn rút ra USDT-> tỷ lệ sẽ là 900USDT và 1100 DAI-> bh ta muốn rút ra 90 USDT ta sẽ phải cung vào 110 DAI, tức là giá của USDT đã tăng lên. Vc tăng giá đó là do thuật toán điều chỉnh. 
+=> số tiền ta rút là lấy từ pool. Nếu cố ý rút hết tiền trong pool ra thì giá của 1 trong 2 sẽ tăng lên vô hạn, khiến cho người đó bỏ nhiều tiền ra để đổi lấy 1 đồng tiền có giá cao hơn nhưng số lượng lại ít hơn, thành ra chả khác gì ban đầu.
+AMM có thể dùng bất cứ lúc nào miễn có ví liên kết với nó mà k phải xác minh danh tính nên ẩn danh; giá cả xác định theo thuật toán và thực hiện tự động với smart contract nên đặt lệnh sẽ luôn đc khớp và ngay lập tức; coin giao dịch trực tiếp mà k giữ lại ở sàn giao dịch nên k bị hack
+
+Liquidity pool: AMM hoạt động phải có 1 nguồn cung thanh khoản có sẵn nghĩa là phải có người cung cấp cả 2 loại tiền điện tử 1 lúc vào pool để ng dùng trao đổi khi có nhu cầu. Bù lại họ được khoản phí phát sinh (thg là 0.3%). Như v người dùng cung cấp thanh khoản cũng có thể hưởng phí giao dịch.
+Sàn thông thường có quá nh khiến cho các loại token kém phổ biến có tính thanh khoản thấp, việc trao lợi nhuận cho người cung cấp thanh khoản sẽ tạo động lực để họ đưa các đồng token kém phổ biến lên, giải quyết vấn đề các đồng coin kém phổ biến bị thiếu thanh khoản
+Uniswap dùng phép x * y = k với x, y là số lượng mỗi loại còn k là hso. Tức là ta càng lấy nhiều 1 loại tiền thì giá của tiền đó càng tăng lên và khả năng lấy tiền của ta sẽ giảm dần đi vì k đủ tiền để đổi nx. Công thức trên cho thấy tỉ lệ rằng 1 cái giảm thì 1 cái tăng tức giao dịch càng nhiều, thanh khoản càng tăng, giá càng tăng nhưng đồng còn lại kbh giảm về 0 vì đặc tính phép nhân nên giá của đồng kia sẽ tăng vô hạn. 
+Những người gửi tiền vào pool thanh khoản có thể lỗ vì người dùng luôn lấy đi đồng coin tăng giá và để lại đồng coin giảm giá. Nếu ng cung thanh khoản tạo với các cặp tiền điện tử là stable coin thì sẽ tránh mất mát này.
+
+Pair là cặp tiền trong pool. Ta có thể tạo ra 1 pair và trở thành người cung thanh khoản đầu tien của pool này.
+
+-> EVM(Etherium virtual machine) là máy ảo blockchain. Là môi trường thực thi bytecode của smart contract. Mỗi node trong mạng sẽ vận hành EVM và chạy các hợp đồng thông minh.
+Dev viết solidity code tạo smart contract -> compile thành bytecode -> deploy vào mạng etherium -> Mỗi node trong mạng là 1 máy tính chạy program Geth nhận được bytecode đó(Mỗi node sẽ có 1 bản copy của bytecode) -> geth là implementation của Etherium protocol chứa EVM -> EVM sẽ run bytecode(như 1 CPU ảo) để thực hiện các tập lệnh là ngôn ngữ máy -> tạo ra 1 result -> result khiến cho current state change. Ethereum blockchain có 1 state tại mỗi thời điểm lưu account, smart contract,.. ở thời điểm hiện tại. Các node sẽ keep track cái state đó. VD smart contract viết ban đầu thay đổi quyền sở hữu của tài sản nào đó thì 1 state mới ra đời r -> mọi node cập nhập state mới tức là lệnh được thực hiện xong
+
+Khác với Ethereum, Bitcoin k dùng state machine mà là stack machine -> Khi mọi node trong mạng bitcoin nhận transaction -> nó tạo block mới, thêm trans vào và thực hiện xác minh. Khi thêm trans vào nó giải mã unlocking script có redeem script -> Nó thực hiện trên 1 stack như v push dần vào. Còn state machine có thể coi như 1 hàm chuyển đổi trạng thái nhận bytecode đầu vào và đầu ra là trạng thái mới.
+=> Solidity dùng được vói mọi blockchain sử dụng EVM, VD BSC
+
+-> Remix là 1 browser-based IDE online(bao gồm text editor và compiler) cho smart contract, tại https://remix.ethereum.org dùng deploy sản phẩm luôn. Remix hiện tại chỉ dùng để lập trình cho solidity.
+Cách chạy: Compile -> chọn account, môi trường, Gas limit (để mặc đinh) -> deploy
+Remix là môi trường mô phỏng để phát triển phần mềm thôi, mọi tài khoản trên đó, lượng gas đang có đều là tự có để kiểm thử. Nếu muốn dùng ether thì có thể chỉnh giá trị value để giao dịch.
+
+Có thể debug SM bằng cách đánh dâu breakpoint trong remix -> ấn vào  nút debug -> cứ next từ đầu đến cuối xem các bước của nó
+
+-> Sách trắng là tài liệu cung cấp thông tin phát hành bởi 1 tổ chức để quảng bá cho sản phẩm, dịch vụ của họ. Có thể là tài liệu bán hàng, tài liệu kỹ thuật mô tả chi tiết 1 sản phẩm, phát minh, là công cụ đo lường phản ứng của công chúng, thuyết phục khách hàng,.. 
+
+-> Thử verify merkle tree tx trong solidity
+
+-> Phân biệt các cách giao tiếp client-server:
+Một trang web k giao tiếp giữa server và client thì rất dễ, chỉ cần tương tác qua lại qua các nút bấm là được. Nhưng 1 trang web cần giao tiếp thời gian thực giữa client và server thì phải sử dụng các kỹ thuật: AJAX, long-polling, short-polling, HTML5 server-sent request,.. => chậm, tốn tài nguyên
+
+Có rất nhiều giao thức và mỗi giao thức có rất nhiều tool và trường hợp để sử dụng tạo giao tiếp client-server. Ở đây ta chỉ xét 2 giao thức phổ biến nhất mà dùng cho rất nhiều ứng dụng từ web tới ứng dụng như game, android bth. Đó là TCP và UDP. Dù nó có nhiều tool cho phép implement 2 giao thức này nhưng chung quy lại cơ chế là như nhau(đã biết 2 giao thức này).
+
+TCP và UDP không phải là socket, nó ở tầng thấp hơn. VD việc giao tiếp http request giữa browser và server không phải là socket nhưng vẫn dùng TCP. Đây chỉ là các giao thức cực kỳ phổ biến giúp giao tiếp server-client với nhau. Trên thế giới có đến hàng trăm kiểu giao thức với vô số trường hợp giao tiếp khác nhau chứ k chỉ realtime với cả tĩnh đâu. Ví dụ SMTP giao thức truyền mail cũng chỉ là client và server gửi mail cho nhau, nhưng người ta k dùng các giao thức phổ biến HTTP, TCP, FTP để làm điều đó mà lại dùng SMTP bởi vì nó có những lợi ích riêng tùy TH nên mới dùng như v.
+
+WebSocket giao tiếp client-server bằng TCP. Giao thức thông thường là ws:// và giao thức secure là wss:// VD ta dùng nó trong web3 để giao tiếp vói Ethereum blockchain
+
+Tương tự để giao tiếp web3 với Ethereum network liên tục trong realtime như subscrive an event thì phải dùng các tool có giao thức real time như TCP. Trong web3 cũng hỗ trợ websocket. Ta phải dùng nó thông qua websocket provider or http provider. Để thiết lập kết nối vĩnh viễn, chạy infura api kết nối với ethereum blockchain và tạo provider với API đó là web3 sẽ duy trì kết nối khi chạy ct, còn lại thao tác như bth
+
+-> 2 loại server code blockchain phổ biến:
+Server bắt sự kiện: server sẽ bắt các sự kiện blockchain để lấy tất cả data trong quá khứ và subscribe để lấy các data mới. Sau đó có thể lưu vào DB kèm trường timestamp để sau này server có ngắt cũng biết rằng phải tiếp tục query từ timestamp nào. Nó giúp phục vụ mục đích thống kê, xem lịch sử và k yêu cầu quá mức realtime.
+Server query sự thay đổi và thực hiện các actions. Nó không cần query từ blockchain, VD các trang như coingecko cung giá các token realtime sẵn thông qua REST HTTP. VD defisaver query giá liên tục sau mỗi khoảng thời gian và perform hộ user các actions tương ứng. Hay 1 server query liên tục check thay đổi giá và báo cho users qua telegram
+
+-> Học solidity qua CryptoZombie
+
+-> Tổng quan:
+###
+# Basic
+# Gas
+# IPFS
+# Event
+# Dùng transfer, send, call
+# Cách gọi hàm của 1 contract khác
+# Library
+# Transaction
+# Mã hóa
+# Data type 
+# Assembly
+# Math trong solidity
+# Chainlink
+# NFT
+# Token Ethereum
+# Kế thừa class
+# Dùng interface
+# Bảo mật Sol
+# Minimal Proxy Contract
+# Access private variable
+# Các EIP khác
+# Upgradable contract
+# Dùng liteserver
+# Bản chất web3 esmodule và commonjs
+# Tool Scaffold
+## Các tool khác
+# Dùng ganache
+# Dùng truffle
+# Dùng hardhat
+# Tool Geth
+# CreateFromScratch
+# Gasless tx
+# Project BK Swap
+# Other
+###
+
+

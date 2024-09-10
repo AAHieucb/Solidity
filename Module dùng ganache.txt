@@ -1,0 +1,34 @@
+Dùng ganache:
+Ganache là 1 tool tạo blockchain cá nhân để test for rapid Ethereum và phát triển ứng dụng phân tán. Có thể dùng nó để develop, deploy, test dApps trong môi trường an toàn. Có 2 loại là UI và CLI.
+Ganache-cli(Ganache commandline): sẽ kết hợp cùng truffle để tạo test environment đủ tính năng.
+
+
+
+# Dùng cli
+-> Dùng bản cũ ganache-cli deprecated (chuyển thành ganache):
+npm i ganache-cli -g -> terminal chạy: ganache
+
+Chạy với port cụ thể: ganache-cli -p <port>
+
+--> Các option:
+ganache-cli --host 127.0.0.1 --blockTime 2 --networkId 12345678
+host: địa chỉ của host chạy node
+blockTime: Thời gian một block mới được sinh ra
+networkId : networkId của mạng
+ChainID mặc định là 1337
+=> port mặc định là 8545 nên rpc url ở đây là http://127.0.0.1:8545 => chỉ dùng cho mạng local
+
+--> ganache-cli -m "<seed phrase của metamask>" => đây là cách để khởi tạo 10 tài khoản của ganache từ seed phrase này thì các accounts trong metamask sẽ có sẵn ether của mạng ganache => tức bth ta k dùng như v thì 10 tk nó sinh từ seed phrase ngẫu nhiên
+
+--> url http://localhost:8545 của ganache tạo ra chính là url của provider đến luôn full node có list địa chỉ và key. Nếu truyền vào web3 có thể tạo instance thực hiện được transaction luôn vì gắn luôn tk rồi
+
+-> Dùng bản mới: npm i ganache -g -> terminal chạy ganache
+=> Global chỉ dùng được 1 phiên bản k được cài cả 2, mỗi khi dùng nên cài lại đè lên nhau
+
+
+
+# Dùng ganache gui
+
+
+
+# Other

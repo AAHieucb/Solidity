@@ -1,0 +1,40 @@
+CryptoZombie: Tạo game NFT cơ bản bằng solidity
+
+-> Solidity:
+- function keccak256 của solidity là 1 version của SHA3 sinh 256bit hex number => có thể dùng sinh số ngẫu nhiên từ string, 2 string trùng nhau cho ra cùng 1 số với typecast sang uint
+- array.push(<ele>) sẽ return ra length mới of array
+- Compare 2 string trong solidity: keccak256(abi.encodePacked((a))) == keccak256(abi.encodePacked((b))));
+- require(1==1); có thể k cần error message
+- struct trong function cx phải rõ ràng memory or storage
+- Cái qtr là internal dùng được ở contract kế thừa còn private thì không => Nếu ta cần tạo ra nhiều contract có các thuộc tính giống nhau thì nên để chúng cùng kế thừa 1 contract base với các hàm chỉ gọi ở con để dạng internal
+- Ta thg k hardcode cho contract address trong solidity vì vấn đề update, nếu 1 contract mà bị phụ thuộc vào 1 contract khác mà contract khác đó nó bị lỗi thì toàn bộ sẽ hỏng. Do đó họ dùng thêm 1 function external cho phép set cái address contract đó để lấy interface instance của contract đó. Thêm owner để cho kp ai cũng đổi address interface đc
+- Thường ta gọi hàm (,,param3) = Interface(address).<hàm>(<params>);
+- uint8 và uint256 tốn 1 lượng gas như nhau, nhưng khi nằm trong 1 struct thì rẻ hơn khi các data type cùng kiểu ta put cùng nhau trong struct. VD: struct {uint, uint32, uint32} tốn ít gas hơn {uint32,uint,uint32} bởi vì 2 cái uint32 trong 1 struct sẽ được gom lại 1 cục khi lưu. Do đó khi dùng struct thì cần căn xem dùng kiểu nào là tối ưu xem khoảng nó nằm như nào VD uint16 hay uint8 hay uint32 cho rẻ
+- block.timestamp trả ra unix timestamp của block mới nhất. Unix time trong máy tính lưu bằng số 32bit. Nếu ta dùng trong app sẽ dẫn đến "Year 2038" problem khi 32bit unix timestamp bị overrlow và các phần mềm cũ sẽ bị hỏng. Nếu k muốn app ta bị hỏng thì chỉ cần k dùng int 32 bit để lưu timestamp là được. Khi đó ta phải dùng 64bit nhưng sẽ tốn nhiều gas hơn. Nhớ khi dùng block.timestamp thì phải cast sang dạng cần dùng
+- Trong solidity có seconds, minutes, hours, days, weeks, years
+- Việc lưu array trong storage bth thì đắt hơn là duyệt vòng for loop trong solidity. Đặc biệt khi array chỉ dùng trong các hàm view thì nên tạo ra memory array + forloop sẽ rẻ hơn là việc dùng array storage rồi lookup nhanh: uint[] memory values = new uint[](3); => khi dùng memory array phải có rõ số lượng phần tử nhưng số lượng phần tử có thể lấy từ biến khác nên người ta thường chỉ cần lưu count là số lượng phần tử trong storage
+- VD: getZombiesByOwner thì mapping (address => uint[]) public ownerToZombies; là cách làm không tốt, đặc biệt khi cần thêm xóa 1 zombie của owner mà order k thay đổi thì gas cost sẽ rất đắt khi phải ghi lại vào storage n-1 phần tử khi xóa phần tử đầu tiên. Thay vì v ta duyệt for zombie ở mảng lớn chứa toàn bộ zombie sẽ tốt hơn để xây array of zombie cho owner. Sau đó hàm xóa và transfer zombie sẽ đơn gian hơn nhiều vì éo cần mapping lưu index này nọ => cân nhắc khi cần ghi vào storage và việc update nó trong các hàm tốn time. Cũng ít khi dùng for trong 1 transaction, thg chỉ dùng cho view => k hiểu
+- cast msg.sender cũng như mọi address sang payable trước khi gửi ether cho nó, còn gửi token thì thoải mái
+- Cho kế thừa contract ownable của openzeppelin là xong luôn, k cần làm gì khác nx
+- uint(keccak256(abi.encodePacked(block.timestamp, msg.sender, randNonce++))); là 1 cách tạo random number nhưng không tốt. VD ta run 1 node minter xong publish trans chỉ vào node của ta mà thôi mà không share ra ngoài. Sau đó ta chạy hàm sinh số ngẫu nhiên để xem nếu ta thắng thì mới gửi trans và block kế tiếp và giải mã nó, nếu k thì chờ từng block đến khi thắng. Do số lượng minter cực lớn nên xác suât ta mint block trúng được như v k cao. Nhưng nếu phần thưởng lớn thì rất đáng để thử. Do đó cách này dùng để sinh số ngẫu nhiên với các chương trình k có giá trị lớn vì minter sẽ k đủ nguồn lực để làm vậy và chỉ để ăn 1 khoản tiền nhỏ. Còn nếu chương trình lớn thì phải dùng oracle để lấy random number outside blockchain
+- VD code của ta đang có ownerOf xong lại kế thừa ERC721 lại có ownerOf lại implement tiếp -> sẽ báo lỗi sai, ta cần phải đổi tên trong contract gốc để tên của ERC721 phải chuẩn và k bị trùng
+
+-> Lib Web3:
+- var contractInstance = web3.eth.contract(<abi>).at(<address>); là 1 cách truyền lấy instance contract khác
+
+-> Game:
+- Với kiểu phân loại các nhân vật thì họ thường dùng 1 dãy số DNA để chỉ các bộ phận của nhân vật, ta tách dãy số ra và dùng phép chia hết để phân loại
+- Xong có thể cộng trừ để sinh DNA mới hay gán 1 số gì đó vào cuối để phân loại các loại nhân vật khác nhau, VD số cuối cùng trong DNA là số mạng mà nhân vật có và cứ - 1 đến khi == 0 thì chết
+- VD CryptoKitty khi ta load cái contract của nó thì ta chỉ lấy được DNA. Chẳng hạn muốn lấy ảnh của 1 con CryptoKitty nào đó thì bức ảnh này không lưu trên blockchain or IPFS mà nó được lưu trong server của game này. Tức là nó vẫn phụ thuộc vào 1 server tập trung. Nếu mọi thứ đều được lưu trong blockchain thì ta sẽ kbh phải lo về việc server bị sập hay gì. Còn ở TH này, chúng ta vẫn bị kiểm soát, người dùng server có thể block ta k cho load cái image nếu họ ghét ta chẳng hạn.
+VD: ta truy cập vào 1 bức ảnh bằng cách fetch API từ 1 remote server https://api.cryptokitties.co/kitties/1
+- VD ta muốn tạo 1 giao diện cho cryptoKitty ez, load thông tin người dùng, lấy ảnh từ API trên load về web ta hiển thị ra, xong bắt event người dùng click ảnh thì làm gì chẳng hạn bằng ví họ
+- Tính năng cooldown: khi đối tượng được tạo ra ta gán cho nó cooldown, khi hành động thì require check cooldown, khi hành động xong thì trigger vc set cooldown mới
+- Có 1 cách để khiến giá trong game được cân bằng. VD khi ta level up 1 nhân vật thì mất phí. Nhưng giá của ethereum đâu có cố định. VD nó bị x10 thì ban đầu mua 1 nhân vật mất 1 đô thì bh mất 10 đô. Nếu ta muốn khuyến khích người chơi tham gia trò chơi thì phí nên rẻ cũng như khi tạo ra các đợt khuyến mãi thì fee có thể điều chỉnh được. Do đó trong SM họ tạo 1 hàm setLevelUpFee trong TH này chẳng hạn để nhà phát hành SM có thể chỉnh được cho user
+- Để tạo game nó cho kế thừa contract liên tục chứ k tạo nhiều contract rời rạc: ZombiedAttack <- ZombieHelper <- ZombieFeeding <- ZombieFactory <- Ownable => các tính năng tạo sau cho kế thừa từ các contract ở trước. VD Để 2 zombie attack nhau thì phải lấy được instance từ mảng zombie lấy trong ZombieFactory. Thay vì nó dùng interface với địa chỉ deploy riêng thì nó cứ kế thừa và deploy contract cuối để có tất cả mọi thứ trong 1 contract
+- Vc tuân thủ theo các tiêu chuẩn có sẵn như 721 thì các sàn market có thể bán được sản phẩm của ta, nếu k thì chả nhận diện được. 721 và 1155 thg dùng trong game vì vật phẩm k thể chia nhỏ. VD các nhân vật sẽ là ERC721 còn 1 nhân vật có 10 cái búa thì cái búa là ERC1155
+
+-> Other:
+Y2K là lỗi các phần mềm máy tính khi họ tạo ra các phần mềm dùng 2 chữ số cuối để lưu VD năm 1978 họ chỉ lưu số 78 làm năm còn 19 thì bỏ qua. Dẫn đến năm 2000 nó hiểu như năm 1900 và các phần mềm dùng ngày tháng như v bị lỗi. Do đó họ thay 2 chữ số bằng 4 chữ số để lưu thời gian. 
+Các phần mềm dùng ngôn ngữ C dùng chung 1 thư viện lưu trữ thời gian là standard time library. Thư viện này handle time bằng 4 bytes tức 32 bit. Thời gian nó lưu là so với epoch time 1/1/1970 bắt đầu bằng số 0 và mỗi khi tăng 1s thì số tăng 1 đơn vị và năm 2038 sẽ đạt max của 32bit lưu. Lúc đó khi vào 19/1/2038 thì thời gian sẽ quay ngược về -2^31 rồi đếm ngược về sô 0 vì nó bị overflow. Nhưng hầu hết các CT k dùng số âm để handle thời gian nên sẽ bị crash. Có thể khắc phục bằng cách nâng cấp lên 64bit là xong. Đến năm 2038 thì các máy tính 32bit sẽ crash hết nếu k nâng cấp
+
+

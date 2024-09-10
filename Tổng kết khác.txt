@@ -1,0 +1,173 @@
+Tổng kết lệnh hay:
+enum, hàm push của array, block.timestamp, msg.value, interface + override, wei ether, tx.gasprice, indexed, keccak256(<bytes>), array.length, fallback, gasleft(), address(this).balance, transfer, send, new, library + using for, delegatecall, super, override(,), virtual, selfdestruct(), error
+
+
+Phân biệt: 
+require, assert và revert
+mapping và array[]
+abi.encode và abi.encodePacked và abi.encodeWithSignature k liên quan
+3 cách tạo ra 1 biến struct
+msg.sender và tx.origin
+transfer, call và send
+tạo instance và kế thừa
+revert error và revert string
+2 hàm fallback và receive
+dùng new và create và create2
+
+
+Probs:
+Dùng modifier để cản recursion của reentrancy hack
+Return nhiều đối số và return function trả ra nh kết quả
+duyệt mọi phần tử của kiểu mapping, xóa hoàn toàn 1 phần tử trong array
+gửi ether cho bất cứ ai
+gọi hàm của 1 contract khác, contract sinh contract
+update contract đã deployed
+contract kế thừa contract khác
+concat string trong solidity
+convert qua lại giữa string, bytes,..
+3 cách khởi tạo 1 biến struct
+
+
+Note:
+input và output function k được dùng mảng dynamic
+mapping luôn đi với storage nên chỉ dùng trong private function
+không được returns(biến struct) mà buộc lấy từng phần tử
+address phải có payable nếu chuyển tiền cho nó bất cứ lúc nào
+Khi tạo instance contract nên nhớ 1 lỗi địa chỉ truyền vào có thể là của contract khác k được tin tưởng
+Hàm số mà là private và params của 1 hàm số thì nên luôn thêm _ đằng trước
+Compare 2 string trong solidity
+
+
+Library chỉ cần nhớ đúng 3 tính chất:
+internal như là paste thẳng vào contract và phải compile cùng contract, còn external và public thì phải deploy và link vào contract mới dùng được
+dùng lib tránh lỗi out of gas của solidity không cho deploy
+2 cách using for và gọi từng lần
+
+
+Inheritance 3 ý:
+Khi định nghĩa lại hàm thì cha phải có virtual, con phải có override(các contract muốn override hàm này), k thể override biến
+Hàm gọi từ phải qua sau is khi dùng super.<hàm>(<params>) và chỉ gọi 1 hàm đầu tiên gặp được, nhưng constructor gọi từ trái qua sau is
+Gọi super hàm của 2 contract mà cùng kế thừa từ 1 contract thì sẽ gọi hàm cả 3 contract(nếu 3 contract đó cùng có hàm đó)theo thứ từ A,B,C nếu B và A cùng kế thừa từ C
+
+
+Sử dụng các thư viện của openzeppelin: npm install @openzeppelin/contracts
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
+
+
+Trang web vanity-eth: cho phép sinh ra address và pivkey của nó, còn tùy chọn được đầu vào
+
+
+Có các trang web tìm kiếm các đợt ICO như: https://icodrops.com/ hay https://www.alameda-research.com/
+Các cộng đồng Crypto uy tín: Coin98, Coin68, SGN Capital
+Các dự án có những buổi như AMA(ask me anything) với các Dev để gây dựng lòng tin
+Các nền tảng giải quyết tốc độ giao dịch thay cho Ethereum bị chậm như Solana, Polkadot, Near
+Số lượng DApps có thể là 1 thông số so sánh các nền tảng. Còn có TVL(total value locked) là tổng lượng giá trị tài sản khóa trong smart contract của defi. TPS(Transaction Processing System) là hệ thống xử lý dữ liệu giao dịch.
+Backer là người chống lưng cho các dự án, có thể tra cứu backer cho các dự án tại: https://www.cypherhunter.com/
+
+
+EVM compile thủ công:
+Khi ta viết sol, ta sẽ compile ta bytecode và bytecode đó là thứ sẽ nhét vào EVM để execute khi cần. EVM là thứ thực sự xử lý transaction khi gửi đi trong mạng.
+Stack-based với each item in EVM là 256bit và stack size max là 1024
+EVM store code riêng biệt trong virtual ROM mà chỉ có thể accessed bởi các lệnh đb. Còn storage và memory lưu biến nữa
+Cái bytecode là dãy số hex dài ngoằng là thứ mà EVM sẽ nhét vào stack từng tí 1 và xử lý, bytecode đó biểu diễn cho các action làm gì theo thứ tự. Raw bytecode cứ 2 character là 1 byte biểu diễn cho 1 thứ gì đó, bao gồm cả opcode. Mỗi opcode tương ứng với 1 hành động. VD: 0x00 là STOP, 0x01 là ADD,... => low lever operator
+VD: 6080... thì là 0x60 0x80 = PUSH1 0x80
+VD contract:
+pragma solidity >=0.7.0 <0.9.0;
+contract HelloWolrd{ 
+   uint256 a;
+   constructor() {
+      a = 1;
+   }
+}
+Ta compile bằng $ solc --bin --asm hello.sol => package solc
+Sẽ cho kết quả tag_1:
+tag_1:
+  pop
+    /* "hello.sol":99:100  1 */
+  0x01
+    /* "hello.sol":95:96  a */
+  0x00
+    /* "hello.sol":95:100  a = 1 */
+  dup2
+  swap1
+  sstore
+  pop
+    /* "hello.sol":33:109  contract HelloWolrd{ ... */
+  dataSize(sub_0)
+  dup1
+  dataOffset(sub_0)
+  0x00
+  codecopy
+  0x00
+  return
+stop
+
+và Binary:
+6080604052348015600f57600080fd5b506001600081905550603f8060256000396000f3fe6080604052600080fdfea26469706673582212205fe60a80f73e86d9f3ad4b2fce33b99a5903282fbd1e3b5c7df084ce790bd8d964736f6c634300080a0033
+=> binary chính là compiled bytecode.
+
+Phân tích tag_1 là các bước contract của ta được thực thi. Nó tương đương với 6001600081905550
+=> Phân tích: 
+60 01
+60 00
+81
+90
+55
+50
+=> EVM lấy từ trên xuống thực hiện theo stack:
+tag_1:
+  // 60 01
+  0x1 (short hand for push 0x1)
+  // 60 00
+  0x0
+  // 81
+  dup2
+  // 90
+  swap1
+  // 55
+  sstore
+  // 50
+  pop
+=> chiếu theo danh sách biểu diễn opcode thì sẽ là các lệnh như v
+=> Khi EVM thực thi chạy lần lượt các lệnh trên thì store và stack sẽ là:
+// 60 01: pushes 1 onto stack
+0x1
+  stack: [0x1]
+// 60 00: pushes 0 onto stack
+0x0
+  stack: [0x0 0x1]
+// 81: duplicate the second item on the stack
+dup2
+  stack: [0x1 0x0 0x1]
+// 90: swap the top two items
+swap1
+  stack: [0x0 0x1 0x1]
+// 55: store the value 0x1 at position 0x0
+// This instruction consumes the top 2 items => tức là lưu 0x1 vào store vị trí 0x0
+sstore
+  stack: [0x1]
+  store: { 0x0 => 0x1 } // tức là value 0x1 store ở position 0x0
+// 50: pop (throw away the top item)
+pop
+  stack: []
+  store: { 0x0 => 0x1 }
+=> stack empty tức EVM execute thành công contract
+
+
+-> Tổng kết các tool và framework đã biết liên quan tới blockchain smart contract: 
+Tool viết smart contract: solidity extension, truffle, remix, Hardhat
+Tool compile smart contract: solidity extension, truffle, remix, remix extension, Hardhat
+Tool tạo mạng personal blockchain: Ganache-CLI, Ganache-GUI, Truffle Develop, Geth(local mode), Hardhat
+Tool deploy smart contract vào mạng chỉ định: Truffle Migrate, remix, Hardhat
+Tool deploy smart contract có sẵn mạng blockchain test của nó: remix, Hardhat
+Tool test smart contract: remix, Truffle(thư viện Mocha và Chai), Hardhat
+Ví để dùng và test: MetaMask, TrustWallet, Coinbase
+Mạng public để test blockchain: Ropstent, Rinkeby
+GUI cho smart contract: html, javascript, react, (bootstrap, react-redux, redux-saga, react-transition, react-router-dom, react-bootstrap)
+Thư viện giúp tương tác GUI với smart contract của 1 blockchain nào đó: web3js, ethersjs
+Tool tạo personal server cho GUI: Truffle Box(có lite-server), 000webhost
+Backend kết nối với database server: NodeJs, (express, json-server)
+Database: Microsoft SQL server
+Ngôn ngữ lập trình blockchain core: Haskell, Golang, C++, Rust
+

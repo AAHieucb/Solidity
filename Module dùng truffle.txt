@@ -1,0 +1,341 @@
+Dùng truffle:
+Tool giúp deploy, test và tương tác với contract
+Trong truffle cũng có sẵn ganache riêng mà k cần dùng thêm tool ngoài
+
+=> Refer tới "Web3 lib / Web3 Basic"
+=> Refer tới "Web3 lib / Web3 Advance"
+
+
+
+# Basic
+Truffle là tool dùng như 1 môi trường phát triển, testing framework và assert pipeline của lập trình ethereum giúp tạo test environment, viết test cho contract và nhiều thứ. 
+
+-> Setup ganache:
+npm install -g truffle 
+Kiểm tra truffle với: truffle version
+truffle => hiển thị các câu lệnh của truffle
+
+--> VD chạy truffle với mạng của ganache
+truffle init khởi tạo project -> ganache-cli -p <port> trên 1 terminal riêng để khởi tạo personal blockchain để test với mặc định 10 account 100 ether kèm pivkey, 1 ví HD wallet với mnemonic và gas price, gas limit. Blockchain này mở trên 1 cổng đc chỉ định, port mặc định là 8545 -> cài đặt kết nối với mạng trong truffle-config.js qua cùng cổng mà ganache mở chạy -> tạo smart contract: truffle create contract <tên contract> -> code smart contract -> truffle compile để compile code -> sinh các file thư mục build chứa thông tin cac contract dạng json -> cấu hình để deploy: truffle create migration <tên file> -> thư mục migration -> code deploy -> truffle migrate để deploy vào mạng blockchain tạo bởi ganache qua cổng được xđ ở file truffle-config.js sẽ hiện các thông số của deploy như tên network, trans hash, contract address,.. -> Deploy xong thì test: truffle create test <tên contract> -> sinh ra file thư mục test -> viết code test bằng 1 module của js là mocha(Truffle sử dụng thư viện Mocha và Chai của javascipt để test smart contract, nó có sẵn trong truffle r) -> npm install truffle-assertions để thêm module hỗ trợ test fail -> truffle test để chạy test.
+=> Đó là từ đầu đến cuối, sau khi có r muốn sửa thì chỉ cần truffle compile và truffle migrate mà thôi => sau khi migrate thì cx là thực hiện 1 contract nên terminal của ganache sẽ hiện ra thông số của block mới
+
+-> flatten contract => ref tới "Solidity / # NFT / Deploy NFT lên OpenSea + Etherscan + Remix + Truffle flatten"
+
+-> truffle console => chạy command với truffle => ref tới "Solidity Advance / SecuritySolidity / AccessPivVar"
+truffle console giúp tương tác với blockchain. Ta có thể chạy web3 js trực tiếp để test thoải mái. Gõ từng lệnh 1 nó như liên tiếp nhau. VD:
+- <tên contract>.deployed().then(inst => {<tên var> = inst}) => var lưu rất nhiều thông tin
+- web3.eth.getBalance("0xE39978B9806733e2Cf4Ca420Cf40b200bfeD6F20").then(balance => {console.log(balance);}).catch(console.error); => in ra số dư tk hiện tại, chú ý getBalance là async
+- web3.eth.getAccounts().then( function (result) { return result[0] });
+- web3.utils.toWei("5", "ether");
+- web3.utils.fromWei("14816000000000000","ether"); // chuyển từ wei sang ether
+- 100-89 => nó cũng xử lý tính toán thông thường
+- web3.eth.getTransaction('0x0dafcea4f1174bec454bcc1414c0e474692c919a7d3299ad05c38eb3eddecc32').then(data => console.log(data.gasPrice)); // Để truy cập vào blockHash, nonce, hash, gas, from, to,..
+- web3.eth.getGasPrice().then(console.log);
+- Factory.createRandomDeveloper('Damien', 26, {from: "<địa chỉ nào>", value: web3.utils.toWei("5", "ether")}) => gọi hàm tạo transaction trực tiếp
+- DeveloperFactory.deployed().then(inst => {Factory = inst})
+- Factory.sayHello()
+
+-> truffle tự tạo contract Migrations sẵn
+truffle config có nhiều options hay ta uncomment để dùng
+truffle develop thực chất dùng ganache với network id là 5777
+
+--> Dùng web3 truffle
+truffle phù hợp với thư viện web3, nó tự support biến web3 trong file các file test để dùng trực tiếp. Ta vẫn có thể dùng ethers trong truffle được nếu muốn. Nếu dùng ethers thì nên dùng với waffle hơn. Waffle ra đời sau truffle và có nhiều điểm cải tiến, tự thích ethers hơn. Còn hardhat vẫn là tool pro nhất, nó tích hợp cả plugin với waffle bên trong.
+
+-> Khởi tạo dự án truffle (kqtr)
+Lệnh truffle init tạo dự án trống. 
+
+--> Lệnh truffle unbox <tên dự án> sẽ tạo dự án có thêm vài thứ, và khi dùng như v, nó tự tạo front-end trong thư mục src. Mặc định là cửa hàng shop thú cưng.
+
+Cấu trúc: contracts(code solidity có sẵn Migration.sol), migrations(chứa các file js để migrate đi), test(chứa các bản kiểm thử), truffle-config.js(file cấu hình)
+
+Trong truffle có thư viện lite-server dùng để làm web server cục bộ sử dụng DApp. Nó đi kèm với Truffle Box nên dùng truffle như trên là có r. Cụ thể trong file bs-config.json đã tự set base directory là src chứa các file front-end và build/contracts chứa các smart contract. Và bên trong file package.json tự có "dev": "lite-server" tức khởi chạy lite-server r
+Để chạy ta dùng: npm run dev là xong
+
+---> Mô hình chạy ở project shop thú cưng: giả lập 1 mạng blockchain với ganache -> code smart contract bằng solidity và deploy nó lên mạng blockchain kia bằng truffle. Tạo 1 giao diện front end, dùng web3js(cdn) để tương tác với mạng blockchain giả lập kia lấy dự liệu về cái smart contract thú cưng vừa deploy. Tạo 1 server giả lập nhanh(vì ta k dùng hosting mà máy ta thành server luôn)
+Duy trì mạng blockchain, chạy server -> vào trang web là xong. Để thao tác với các transaction bằng web3 cũng phải cấu hình ví metamask vào cái mạng kia.
+
+-> Để tạo độc lập 1 DApp chạy trên 1 mạng thử nghiệm tất cả mọi thứ, ta cần: 
+Viết smart contract, compile smart contract, tạo và chạy 1 blockchain, deploy contract lên blockchain đó, test các tính năng của smart contract trên blockchain đó, front end kết nối với blockchain đó, server để khởi chạy front end đó, ví điện tử có tài khoản trong mạng blockchain đó -> truy cập vào trang web đó liên kết với wallet và thao tác bth. 
+Qua đó ta thấy được là smart contract kết nối với ứng dụng web chỉ là để làm 1 vài chức năng liên quan đến giao dịch, chứ các thao tác bth có thể k cần liên kết với ví, điều này cx giống như các game NFT, ta chơi game như bth, chỉ là ta dùng token để thao tác giao dịch gì đó trong game, vật phẩm tồn tại được đẩy lên blockchain nên là duy nhất nên mới có giá trị. Chứ game mà sập thì dù vật phẩm còn nhưng cx chả còn ý nghĩa gì.
+
+
+
+# Setup nhanh
+npm i truffle -> truffle init -> code contract 
+- truffle compile: thì bên trong file json có abi nhưng phần networks trống (phải khi deploy bằng "truffle migrate" thì phần networks sẽ lưu thông tin về network cùng contract này đã deployed trên network đó)
+- edit mạng trong truffle.config.js: tối thiểu có thông tin networks và version compiler của solidity(version compiler cx k bắt buộc)
+- truffle develop: chạy ganache có sẵn của truffle, nó ở cổng 9545 nên trong truffle.config.js ta phải dùng networks https://127.0.0.1:9545
+Nó mặc định có 10 account và hiện thị cả 10 private key và 1 mnemonic. Ta có thể import tk đó vào metamask để sử dụng như 1 account trong mạng blockchain truffle develop: lấy url mạng -> metamask -> custom RPC -> paste url mạng, tên mạng ta đặt tùy ý, chainId của truffle develop là 1337 -> import account trong metamask bằng private key nó cung sẽ có 100ETH
+Tương tác với truffle develop giống với truffle console. VD: await web3.eth.getChainId(); await web3.eth.getId(); để lấy network id và chain id của blockchain truffle develop
+- Viết script migration cho contract trong folder migrations
+- Trong console sẵn của truffle develop dùng: migrate --reset sẽ deploy lại mọi contract trong thư mục contract vào mạng test của truffle
+Or mở 1 terminal khác: truffle migrate --network rinkeby --reset => để compile r deploy vào mạng cụ thể rinkeby
+
+-> Command khác của truffle
+truffle unbox react => tạo nhanh 1 dự án mẫu có truffle + react
+
+truffle build => ra thư mục build nhưng k có thông tin về deploy
+
+
+
+# Chỉnh config truffle
+=> refer tới "Setup nhanh"
+
+-> Dùng file truffle.config.js:
+- Có thể dùng file env lưu data secret
+- Cách khác là ghi vào 1 file và đọc file đó bằng fs như bth. VD lưu mnemonic vào riêng file .secret:
+const fs = require('fs');
+const mnemonic = fs.readFileSync(".secret").toString().trim();
+=> Rồi dùng mnemonic là 1 string như bth
+
+Rất nhiều config có sẵn chỉ cần uncomment, ta chỉ ghi những config thường dùng:
+
+--> Dùng contracts_build_directory xác định vị trí thư mục build, thường nhét vào frontend cùng thư mục luôn:
+contracts_build_directory: "./output"
+
+--> Config network
+const HDWalletProvider = require('@truffle/hdwallet-provider');
+networks: {
+  development: {
+    host: '127.0.0.1',
+    port: 8545,
+    network_id: '*' // Match any network id. Tức là bất cứ mạng blokchain nào có host và chạy ở port này đều đc quyền kết nối vào
+  },
+  rinkeby: {
+    provider: () => provider,
+    network_id: 4,
+  },
+  ropsten: {
+    provider: function () {
+      return new HDWalletProvider(
+        process.env.OPERATOR_PRIVATE_KEY,
+        'https://ropsten.infura.io/v3/'.concat(process.env.INFURA_PROJECT_ID)
+      );
+    },
+    gas: 6721975,
+    network_id: 3,
+  },
+  ropsten2: {
+    provider: new HDWalletProvider(
+      mnemonic, 
+      `https://ropsten.infura.io/v3/${infura_key}`
+    ),
+    network_id: 3,
+    gas: 5500000, // Block gas limit
+    confirmations: 2, // Chờ có 2 confirmation mới deploy (default: 0)
+    timeoutBlocks: 200, // Sau 200 block sẽ bị lỗi timeout nếu chưa deploy thành công (minimum/default: 50)
+    skipDryRun: true // Skip dry run before migrations? (default: false for public nets)
+    // Dryrun là lần khởi chạy thử đầu tiên để kiểm tra lỗi, đảm bảo hoạt động tốt.
+  }
+},
+provider fix cứng vào:
+const Provider = require('@truffle/hdwallet-provider');
+const privateKey = '45ca7539ccb548d938ed418f32363a579963b03347f656a78bd3503d4b00bd20';
+const provider = new Provider(privateKey, 'https://rinkeby.infura.io/v3/c4b042ef643743d69bf378263e806024'); // Có thể thế privateKey bằng mnemonic
+
+
+--> Config mạng test
+mocha: {
+  timeout: 100000,
+  useColors: true,
+},
+
+--> Compiler solidity
+compilers: {
+  solc: {
+    version: "0.8.1",
+  }
+},
+
+--> Config khác
+rpc: {
+  host: 'localhost',
+  post: 8080,
+},
+
+
+
+# Viết test trong truffle
+Truffle mặc định dùng tool mocha để viết test
+
+-> Viết test bằng file sol => ít dùng
+-> Viết test bằng file js(dùng mocha) => nên dùng 
+
+Khi test chỉ cần chạy 1 phát như dưới là xong, bởi vì nó sẽ dùng 1 network test riêng độc lập, tức mỗi case test ta đều phải viết code deploy r chạy:
+truffle test => nếu dùng folder test mặc định
+truffle test ./path/to/test/file.js
+=> Chạy lệnh sẽ chạy vào file config rồi deploy lên mạng nó đang kết nối luôn, sau đó chạy từng file test. Nó tự chạy cả 2 loại test trong file sol và file js luôn. Với file sol sẽ test trong từng function, với file js sẽ test trong từng cục it
+
+truffle tự support biến web3 với provider của mạng test trong JS Truffle test file. Ta có thể dùng trực tiếp mà k cần require Web3.
+Ta có thể dùng trực tiếp: const web3 = require('web3'); ở bất cứ đâu trong dự án
+VD lấy balance: web3.eth.getBalance(address).then(balance => {console.log(balance);}).catch(console.error);
+
+-> npm install --save-dev chai chai-as-promised => chai-as-promised bổ trợ cho Chai ta sẽ dùng khi test tự án
+
+-> Cơ chế:
+Khi chạy truffle test, nó sẽ chạy vào file main của dự án nodejs tức chạy vào truffle-config.js đầu tiên -> compile các contracts ở thư mục contracts -> chạy migration.js, ở đây sau khi compile contracts sẽ sinh ra 1 biến global artifacts, biến này có 1 thuộc tính duy nhất là require("<tên file.sol>") để lấy thông tin của contract trong file sol đó -> sau đó chạy module exports với function 1 tham số deployer để deploy nó đi lần lượt file migration r tới file contract của ta -> Ta hiểu khi cái truffle nó sẽ sinh ra file như kiểu:
+if(command cmd == truffle test)
+  import var1 from truffle-config.js
+  var artifacts = <tool compile của truffle>.compile(các contract ở thư mục contracts)
+  if(compile thành công)
+    bool check = true;
+    for(các file trong thư mục migrations : file)
+    {
+      import var2 from file;
+      var2(<tool deploy của truffle>, var1) => vì var1 chứa thông tin về mạng
+      if(deploy thất bại)
+        check = false
+    }
+    if(check == true)
+      chạy command: node <mọi file thư mục test>
+=> Điều này đã giải thích vì sao sinh ra biến artifacts là biến global dùng ở mọi file -> thực chất nó k là biến global có sẵn của truffle mà nó được dùng theo kiểu bên trên sinh ra khi contract được compile thì thông tin contract lưu vào biến đó. Còn biến deployer của file <contract>.js cx đc sinh ra kiểu như v là 1 tool deploy của truffle. Đó cx là lý do vì sao ta k tìm đc thư viện nào có artifacts hay deploy kiểu v là vì nó chỉ có sẵn trong truffle r. Lúc này ta nên follow code cố định như v, dùng các biến mà không thắc mắc. Nếu là của thư viện nào đó thì ms đáng quan tâm
+
+
+
+# Lỗi khi npm i truffle k chạy được => ref tới React
+
+
+
+# Thêm mạng truffle vào ví metamask
+Network Name: Truffle Testnet
+New RPC URL: http://localhost:9545
+Chain ID: 1337
+Currency Symbol: ETH
+
+=> Có thể chỉnh nhiều thứ, tương tự dùng để thêm đủ loại khác vào ví metamask
+
+
+
+# Kết hợp truffle và ganache
+Cũng là "# Cách connect truffle với 1 mạng bất kỳ"
+
+truffle mặc định chạy tại 9545, ganache-cli mặc định chạy tại 8545
+Với truffle ta có thể setup vào 1 network nào và build contract chứa thông tin liên quan network đó
+Với ganache-cli ta có thể chạy network và config tùy ý, sinh ra 10 tk 
+
+=> Ta có thể tạo ra network có 10tk giống metamask bằng ganache-cli, rồi connect truffle với mạng đó là có thể tương tác với sm bằng tk metamask mà kp import account mới mất tg:
+ganache-cli -m "<seed phrase của metamask>"
+Chỉnh truffle-config network develop cho mạng ganache local => truffle migrate --reset --network develop => nếu chạy nhiều lần cùng 1 mạng phải reset account để nó xóa mọi transaction history, tiền mới đúng về 100ETH
+
+=> refer tới "Web3 lib / Web3 Advance"
+
+-> Cách dùng ganache-cli fork mainnet kết hợp truffle => ref tới "# Tương tác Uniswap"
+
+
+
+# Other
+-> Import export ở frontend và backend (kqtr)
+Trong frontend: 
+- Trong javascript front end html reacct, nó chỉ có import và export và dynamic import nhưng nó phải thỏa mãn điều kiện là 1 module thì mới đc sử dụng. Ta dùng file js đó trong file html khác để thao tác ở front end mà thôi. Để sử dụng file js đó, ta phải chạy thông qua file html lên browser bằng cách import nó vào file html dưới dạng module.
+- Khi sang React nó chỉ khác 1 điều là export import trực tiếp luôn giữa các file js mà k cần module con mẹ gì trong cùng 1 dự án
+
+Trong backend:
+- Trong nodejs, nó có import, require, module.export, export. Để dùng được các hàm này thì trước hết file js của ta phải dùng để code backend trước đã. Khi dùng để code backend tức là chỉ cần k thao tác hiển thị ở browser là đã ok r. Để chạy file js backend của nodejs ta dùng node <tên file>.js ở terminal, trong file đó ta dùng đc các hàm như trên đều là của nodejs.
+VD: tạo 1 dự án react thực ra cx là code nodejs trong đó nhưng nó chỉ hoàn toàn là front-end. Dùng được import, export.
+
+Nodejs dùng code javascript. Thực ra code javascript đâu có các hàm require đâu. Code js thuần chỉ là code bth còn nói Nodejs dùng code js chỉ là 1 phần, nó còn mở rộng code đó nhưng vẫn dùng cú pháp của js nên mới gọi là code js. Như qt dùng code C++ nhưng thật ra C++ làm gì có QString, nó chỉ mở rộng từ code C++ thêm với cú pháp cơ chế giống mà thôi. 
+Trong node js, hàm import và export là của nó chính là code js thuần. export ta k nói làm gì nhưng import thì trong nodejs lại có 1 hàm riêng là require dùng tương tự import. require là chuẩn commonjs còn import là tính năng mới của JS ES6. Ng ta vẫn dùng import vì nó cho phép chỉ import những phần mình cần con require thì vơ cả nắm. import là bất đồng bộ còn require có cái trước mới có cái sau.
+
+
+
+# Project Truffle Multisig
+"Solidity Other / ProjectTruffle / ProjectTruffleMultisig"
+
+=> Refer tới đây trong "React lập trình web3 / # Pattern khi nào nên fetch lại API"
+
+Full frontend backend cho 1 multisig wallet.
+
+-> Dùng hook useAsync rất mạnh
+
+-> React có Context, bên trong có component App xử lý việc hiển thị, component Update xử lý vc đổi dữ liệu. VD thay đổi gì trong App như chuyển đổi tài khoản trong ví metamask thì component Update sẽ bắt và update lại trong component App dữ liệu của account khác bằng cách subscribe sự kiện.
+
+-> npm install create-react-app
+create-react-app <tên app> template --typescript => tạo app react bằng typescript, k còn js mà chỉ có ts or tsx
+vào trong thư mục của react:
+npm install semantic-ui-react semantic-ui-css => dùng senmatic ui
+npm install web3 @truffle/contract bn.js => package giúp tương tác với contract, bn.js giúp JS xử lý bignumber
+
+-> Dự án truffle bên cạnh frontend chứa contract multisig: chạy truffle develop để tạo local blockchain -> migrate để deploy -> lấy abi và address
+Mỗi lần reset blockchain là phải copy lại để lấy lại abi các hàm(nếu đổi hàm) và address(nếu deploy lại vào address khác)
+Phải liên kết lại metamask nx nếu account của nó trong truffle develop ta dùng bị khác, kể cả k thì ta cx phải reset lại account trong metamask nếu nó là account đã có trong blockchain cũ. NN là vì mỗi lần tạo transaction ở account trong 1 blockchain thì nó sẽ tăng số nonces của account đó lên và đồng bộ nó với nonce account trong blockchain. Mỗi lần reset blockchain thì số nonce của account bị reset về 0 trong blockchain còn của metamask thì vẫn v nên k đồng bộ nhau và k dùng account đó trong metamask để thao tác với transaction trong blockchain mới được => Còn trong các mạng như ropsten hay rinkeby ta tắt đi bật lên k cần reset vì blockchain testnet k bị reset thg xuyên như local blockchain. Phải luôn để account trong 1 blockchain luôn đồng bộ với account trong app ví của ta nhé or nó coi là đang thao tác với 2 blockchain khác nhau chỉ là bị trùng tài khoản nên bị lỗi tài khoản này ở blockchain khác bị trùng với blockchain này là vô lý k chay
+
+Vào thư mục frontend: cp -r <link thư mục build của truffle project> <link thư mục src của front end chẳng hạn> => Thế là lấy được abi và address
+
+-> Dùng senmatic ui
+import "sematic-ui-css/sematic.min.css"; => ở trong index.js
+
+-> Bố cục component React frontend (xàm lol)
+Xét tính năng hiển thị thông tin tài khoản và dữ liệu của blockchain mà tài khoản này có:
+Trực quan: người dùng bấm nút thì kết nối vào metamask, account của người dùng hiển thị trên trang web; Nếu người dùng chưa làm gì cả thì mặc định account là 0x00; Nếu người dùng bấm nút nhưng chưa đăng nhập tài khoản mà tắt metamask đi thì vẫn hiển thị 0x00; Nếu đang ở tk này, người dùng chuyển sang tk khác thì hiển thị tk mới của người dùng lên trang web ngay lập tức.
+Thứ ta cần: ta muốn app của ta sẽ thao tác dựa trên account người dùng. Để làm được tối thiểu những thứ trên, react app trống vốn k có gì và ta phải nhét tât cả dữ liệu vào react để nó chỉ việc hiển thị ra thôi. Các dữ liệu cần cung cho react frontend là: abi, address của contract là template chứa các hàm của contract để gọi hàm, web3 là biến chứa provider metamask của người dùng để gọi hàm, public account của người dùng để hiển thị. Trong đó web3 là biến cố định nhận duy nhất 1 lần từ user lần đầu kết nối để dùng và vói giao diện thì luôn là window.ethereum. ABI và address contract cx là biến cố định mặc định lúc nào cx có. Account người dùng là biến động người dùng có thể chuyển bất cứ lúc nào theo quy trình như phần trực quan
+=> ABI và address contract tự động lúc nào cx có. Web3 thì khi người dùng mới truy cập lần đầu tiên ta yêu cầu họ connect account thì ta sẽ bắt liên tục sau mỗi 1s khi người dùng đổi account. 
+Phạm vi sử dụng của tất cả các biến đó là global hết => thế thì abi và address contract ta lưu fix file json, còn account và web3 ta dùng redux hoặc ở đây ta dùng Context global để mọi component đều dùng đc. Còn việc đổi account ta dùng luôn reducer hook của reactJS. Tức là ta muốn account là 1 biến trong context để mọi component sử dụng, ta lại muốn nó là 1 state của 1 component khác và component đó gọi useReducer và có hàm update để dispatch cái action => Khi account vừa là state vừa trong context thì mọi component đều dùng được và gọi hàm để update được nó.
+=> Nhưng rõ ràng k thể vì đã là context làm sao là 1 state của 1 component khác được. Đơn giản ta kết hợp nó lại bằng cách: cho 1 component Provider làm component cha của mọi component và component đó dùng context nhưng context này k fix mà giá trị là do component Provider truyền cho, nó cx truyền cả hàm update vào context để mọi component con của nó đều update được
+
+-> Context trong react có 2 cách dùng: 
+C1 k dùng hook: ta đơn giản createContext gán <component>.contextType = Context => thế là class component dùng được thông qua this.context.<biến>
+C2 dùng hook: ta tạo context và tạo 1 component cha bao mọi component cần dùng context r ta cung vào các con của nó bao bởi 1 <context>.Provider và r bên trong các component con, ta gọi hook useContext để dùng cái gì trong context thì lấy
+
+-> Quy trình lấy biến: 
+Tạo reducer lấy ra state bên trong chứa 2 biến global mà ta muốn dùng cho tất cả đó là web3 và account hiện tại -> Tạo Provider làm cha của tất cả components -> bên trong Provider dùng useReducer để lấy web3 và account đó -> tạo ra các hàm thay đổi với các biến thì ở đây có mỗi UpdateAccount mà thôi, hàm này sẽ dispatch action để hiển thị account mới -> provider có tất cả nhưng không dùng gì hết mà dùng Context truyền hết cho con
+=> Đến đây thì các con đều dùng được biến web3 và account hiện tại như ý r, nhưng dữ liệu chưa có, web3 và account chưa lấy từ nguồn nào hết, cũng chưa xử lý khi người dùng đổi thì bắt. Ở đây thể hiện rằng, nếu có dữ liệu thì nó sẽ lấy được như này và nếu dữ liệu update, nó sẽ update được như này, còn làm sao để lấy và update:
+Trong App, ta gọi hàm async window.ethereum để trả ra biến web3 và ta ngay lập tức update nó cho store xử lý bởi reducer là xong.
+Để update account: người dùng đổi -> subscribe sự kiện đó -> gọi updateAccount
+Tạo ra 1 hàm subscribeToAccount chạy 1s 1 lần để bắt sự thay đổi của account. Hàm này sẽ gửi lại cái account hiện tại đang kết nối. Giả sử đang ở account A, sau đó ta chuyển sang account B thì account hiện tại đang là account A, hàm subscribe sẽ gửi account tới và nó check nếu account hiện tại khác account mới => update account mới thì ở đây ta chưa xử lý mà mới reload lại page -> gọi hàm này ở trong App mặc định luôn, nhưng do gọi trong App nó k hay nên tách mẹ ra 1 component riêng chỉ có nhiệm vụ gọi hàm này
+
+-> Quy trình chạy:
+Đầu tiên khởi động app -> render lần đầu tiên, reducer khởi tạo giá trị mặc định cho web3 là null và account là 0x00 để app hiển thị, reducer này là của Provider cung cho mọi component. Component Updater được render chả ra gì cả mà nó chạy cái hàm bên trong, lúc này web3 = null nên nó chả làm gì cả
+Ấn connect vào ví nhưng chưa nhập mk, chưa kết nối -> App gọi vào hàm bấm connect và gán loading = true và hiển thị ra loading. Lúc này hàm ấn chuột đó gọi vào hàm có window.ethereum để pop up metamask chưa làm gì cả và hàm này là hàm async
+Gõ mk và lấy account đầu tiên -> hàm async kết thúc, loading bằng false hiển thị bình thường, gọi để reducer update state account mới là mọi thứ tự cập nhập. Lúc này state account và web3 bị đổi, Updater dùng useEffect gọi lại hàm sẽ thành gọi hàm setInterval liên tục và nó bắt đầu check mỗi giây 1 lần xem account trong metamask có bằng với account hiện tại k
+Người dùng đổi sang account khác -> setInterval bắt được -> nó check khác account trong state của react lập tức reload lại page
+Tắt Ct -> các component lần lượt bị xóa -> khi Updater bị xóa, các useEffect của nó cx bị xóa theo làm cho interval dừng lại, còn mọi thứ khác vẫn bị xóa như bth
+
+-> Xử lý tính năng của contract: 
+User1 gửi vào contract 1 lượng tiền -> hiển thị thông tin contract có thêm 1 lượng tiền -> User1 tạo ra 1 transaction gửi lượng tiền đó cho user2 -> transaction đó liền hiển thị mọi thông tin trên giao diện -> User1 xác nhận transaction bằng vc ấn nút -> thông tin số người đã Confirm tăng lên 1, đồng thời hiển thị là đã xác nhận -> người dùng chuyển account sang User2 -> màn hình update lại thông tin mọi thứ rằng user2 chưa xác nhận -> User2 xác nhận, màn hình liền hiển thị nút execute -> người dùng chuyển sang bất cứ account nào thì nút executed vẫn còn đó -> 1 người nào đó execute -> transaction được thực thi, số dư cập nhập, cập nhập mọi thông tin executed, các nút bấm biến mất
+
+Ở bài học này, ta cần làm chủ 2 cơ chế:
+1) Ấn nút-> thực hiện transaction-> cập nhập lại data
+2) Các thông tin thay đổi không phải thông qua việc bấm nút -> subscribe nó liên tục sau mỗi 1s -> hiển thị sự thay đổi
+
+Phân tích các TH:
+TH1: Ấn nút connect vào metamask
+Ấn nút thì nó thực hiện và trả ra sự thay đổi ngay nên: ấn nút -> gọi hàm call để liên kết với ví của ta -> tạo loading -> khi hoàn thành lấy ra biến và update luôn lên giao diện qua reducer
+TH2: Deposit vào contract 1 lượng tiền(k refresh)
+Ấn nút thì thực hiện nhưng k hiển thị được balance của contract ngay nên: ấn nút -> gọi hàm call gọi đến hàm deposit trong contract thông qua web3 đó -> hiển thị loading để người dùng ký transaction -> xác nhận xong là hết 
+Để tự động bắt, trong contract của ta phải có hàm phát ra event khi thực hiện deposit -> dùng web3 subscribe event, nếu event xuất hiện -> lỗi thì show, k lỗi thì gọi hàm chạy vào reducer update cái balance
+TH3: Đổi account hiện tại
+Người dùng tự đổi account hiện tại thì cái này chúng ta k thể kiểm soát được như 2 Th trên vì người dùng có thể đổi bất cứ lúc nào -> ta bắt từng giây 1 bằng cách sau 1s là check account hiện tại của metamask có bằng với account trong app của ta k -> nếu bằng thì bỏ qua, k thì reload lại trang sẽ k có connect gì cả và người dùng phải connect lại với account mói
+
+-> Cơ chế ta có thể hiểu được việc khi ấn nút thì đổi account nhưng làm sao khi người dùng đổi account thì mọi thứ được cập nhập ngay lập tức theo account mới mà k reload lại trang. NN rất đơn giản là vì context, ta muốn web3, netId, account khi đổi thì mọi thứ phải cập nhập -> mọi component dùng đến dữ liệu 3 biến đó phải thay đổi theo cái mới nhất. Để nó render lại thì bắt buộc phải dùng hook rồi -> nhét 3 cái đó vào trong context -> cho component dùng context đó -> khi người dùng đổi account ta bắt và cập nhập account mới -> xong cho reducer bắt và Provider dùng reducer đổi state sẽ render lại -> Provider Context của component Provider nhận giá trị mới -> context có giá trị thay đổi -> mọi component dùng hook useContext nếu lấy data trong context mà có giá trị thay đổi đều render lại
+=> Redux cũng tương tự
+
+-> Cấu trúc file: 
+Để chia file được như nó là cả 1 vấn đề, nếu ta gom hết vào 1 file thì:
+Provider bao App; Provider dùng context.Provider; app dùng useContext dùng cái mà Provider cung cấp; context mà Provider cung cấp các biến và các hàm; App dùng biến để hiển thị, dùng hàm để làm chức năng đổi biến; Provider làm hết việc useReducer rồi, chỉ cần truyền lại vào context cho ô kia dùng; 
+Để dùng reducer trong Provider: Tạo ra Provider bao các component cần có các biến -> Tạo ra state chứa giá trị mặc định của các giá trị muốn dùng trong các component(do dùng typescript nên phải định nghĩa interface cho kiểu object đó) -> tạo ra reducer xử lý các biến đó, nhét reducer đó vào Provider -> định nghĩa các hàm thay đổi biến trong Provider để các con chỉ cần gọi ngắn gọn thôi -> khai báo context chứa các biến gom vào 1 biến state và các hàm xử lý mà gọi vào reducer, giá trị mặc định cho nó -> dùng nó trong Provider truyền lại cho các con.
+Tương tự ta chia ra nhiều provider nhiều reducer cho mỗi phần
+
+-> Frontend ta thử xử lý việc render ra thông tin từ contract:
+Các trường thông tin ta gọi hết qua các hàm get của contract
+Tạo instance of contract bằng web3 or bằng truffle contract cho nhanh vì đây là dự án truffle -> gọi các hàm get và lấy ra từng trường dữ liệu lưu vào 1 biến -> dùng biến đó trong App -> để lấy dữ liệu k bị render quá nhiều lần thì ta chỉ cần lấy nó ở lần đầu tiên. Nhưng trong DApps thì k dễ vì người dùng có thể đổi mạng khác xong quay lại mạng này(biến web3 đổi) thì nếu contract này cx có ở mạng kia thì phải hiển thị thông tin mạng kia tức là hàm gọi các hàm get của contract được thực hiện lại sau mỗi lần web3 thay đổi
+=> Quy trình thì như v nhưng thực tế ta phải phân chia file nên phải dùng reducer, phải dùng Provider -> cũng chỉ là ban đầu có giá trị mặc định, về sau khi get hết các thứ thì gọi vào reducer để lấy giá trị mới là App hiển thị được mà thôi
+
+-> Để deploy lên ropstent: 
+Ta dùng luôn tk của truffle develop -> faucet nó -> uncomment dòng trên phần test net -> install package -> thế vào project Id của infura -> uncomment ropsten network -> sửa đổi -> truffle migrate
+
+Ta có thể chuyển đổi giữa hai mạng vừa ropsten, vừa local hiển thị bắt 2 network khác nhau, khi chuyển mạng thì số liệu sẽ mang của từng mạng khác nhau
+
+Trong thực tế, App này có thể nằm trong 1 app lớn. Ta cho 3 ô trống người dùng nhập vào 3 address r ấn nút thì deploy cái multisig wallet này đi. Cứ như thế là 1 ứng dụng tạo ra nh multisig. Ở đây chỉ là TH multisig là 1 App lớn luôn thôi. Chứ cái này k có ứng dụng thực tế vì ng dùng phải được quyền chọn address nào cơ
+
+-> Cơ chế: 
+Dạng 1: Gọi 1 hàm trực tiếp bằng việc bấm nút
+Gọi file ts riêng định nghĩa hàm đó bằng web3, ta lấy contract instance và dùng account hiện tại để gọi hàm -> front end gọi nó bằng async function cho loading -> khi hàm chạy xong mới gán lại loading. Có thể gọi hàm getter ngay sau đó để update các trường data thay đổi
+Dạng 2: Bắt khi nào có sự thay đổi liên tục
+Gọi file ts riêng hàm bắt mọi event -> Viết 1 component gọi hàm bắt event đó switch vào event gì, nếu k có lỗi thì lấy các giá trị log.returnValues và các giá trị cần cho sự thay đổi VD account hiện tại so sánh với cái gì hay các thông tin tối thiểu cần cho việc update mà thôi(reducer có state là mọi thứ từ trước r, ta chỉ cần lấy thêm các thông tin cần để chỉnh sửa) -> dispatch action update đó -> hàm reducer xử lý update dữ liệu mới -> dữ liệu đó bắn vào context bao ngoài để các component bên trong lấy
+Dạng 3: Bắt các sự kiện kp do ấn nút hay event
+Gọi file ts riêng chạy hàm setInterval lấy giá trị gì sau mỗi 1s -> tạo 1 component gọi hàm đó với useEffect, hàm này chỉ được gọi lại khi các thông số ảnh hưởng tới vc gọi hàm bị thay đổi -> bên trong ta thấy nếu gọi ok thì callback so sánh nếu có sự khác biệt tức người dùng đã thay đổi gì đó thì ta thực hiện update giá trị -> nếu k update được ta phải reload lại trang web lận để người dùng lại connect vào thì lấy cái giá trị mới đó
+
+=> Đây là 3 TH update realtime, trong thực tế dự án frontend ít khi subscribe sự kiện như v vì quá nhiều và quá phức tạp
+
+

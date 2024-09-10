@@ -1,0 +1,180 @@
+# Math trong solidity
+Trong solidity có đến vài nghìn kiểu numeric. Có nhiều ngôn ngữ bậc cao cũng k nhiều đến như v và ta cx k cần nhiều đến như v trừ khi ta làm các thứ hardcore low-level stuff, chứ bth dev chỉ cần 1 kiểu number với arbitrary range mà thôi. Tuy nhiên thì kiểu numeric range bất kỳ như v k được hỗ trợ bởi phần cứng và expensive với phần mềm. Do đó các ngôn ngữ bậc thấp muốn có high performance thg có nhiều kiểu numeric types như signed, unsigned, 8/16/32/64/128 bits,.. Những type cụ thể này được hỗ trợ bởi phần cứng và thg dùng trong file format, network protocol,.. Chính vì để tăng cường perfomance nên những type này có các tính chất khá là vớ vẩn của CPU là k thông báo lỗi over/under flow, range k đối xứng, phân số nhị phân, các vấn đề về thứ tự bytes. Điều đó làm cho các thao tác logic bậc cao khó khăn. Nếu dùng trực tiếp thì lại k an toàn, mà dùng k trực tiếp thì sẽ rất phức tạp và unreadable => sr nhưng solidity là ngôn ngữ bậc cao
+
+Solidity có nhiều type nhưng thực tế kp v. VD: uint và int là alias của uint256, int256. Ngoài ra nó còn có 62 type interger int<N> và uint<N> với <N> có thể là bất cứ số nào từ 8 đến 248. Thực tế ở trong EVM, mọi kiểu này đều là 256bit words, nhưng kết quả chỉ cắt và lấy N bits. Nó hữu dụng trong vài case khi dùng đến độ rộng bits còn đa phần những type này là useless và less effcient(vc truncate sau mỗi operation k free đâu)
+
+Còn các kiểu fixedNxM và ufixedNxM có 5184 types thì solidity nó éo cho dùng.
+
+-> Nếu ta muốn nhân 2 số 256 bits cho nhau, k có sẵn mà phải implement bằng mảng chẳng hạn (vì tràn ra ngoài phạm vi)
+
+Nếu muốn biểu diễn phân số. Có thể biểu diễn thành 1 cặp interger biểu diễn numerator và denominator cùng khoảng range. Cách khác là biểu diễn mẫu số là hằng số lũy thừa của 2 or 10. VD: m x B^e với m là mantissa, e là exponent là số nguyên và B là base 2 or 10. Trong IEEE-754 từng được học có nói về vc biểu diễn floating point trong 1 dãy 16, 32, 64, 128, 256 bits  -> trong solidity nó là các dạng bytes2,.., bytes32. Or cách khác là matissa và exponent có thể biểu diễn dưới dạng cặp pair integer
+=> đó là 3 ý tưởng biểu diễn floating point. Đó mới là biểu diễn, còn các phép tính nx sẽ rất phức tạp. Trong solidity có các thư viện giúp ta thao tác với nhiều kiểu number như fixidity(floating point với số lượng phần thập phân tùy ý), BANKEX, DSMath, ABDK,..
+Mỗi kiểu biểu diễn số theo kiểu khác nhau như từ mảng or từ bytes or từ uint
+Trong uniswap tự tạo kiểu UQ112x112 cũng là 1 kiểu biểu diễn floating point.
+
+=> Tức là việc nhân 2 số gây quá 256 bits, hay việc biểu diễn số thập và phân số, ta phải định nghĩa 1 class kiểu riêng để làm các phép tính. 
+Nếu muốn cộng trừ nhân chia với số uint bình thường thì phải convert uint đó thành cùng kiểu float(thg là v) or convert ngược từ float ra uint
+Nếu cuối cùng muốn lấy ra kết quả phép tính để in ra, phải quy hết sang int, nếu là float thì phải quy ước cách lấy ra như nào, mảng hay 2 số int biểu diễn tử và mẫu chẳng hạn rồi dùng JS xử lý để in ra
+
+-> Tương tự như các compiler hiện đại, solidity có khả năng tính các constant expression vào thời điểm compile luôn vd: x = 2 + 2 nó sẽ k tạo ra add opcode khi run time ở EVM đâu mà ngay từ compile time nó đã chạy như x = 4 r
+Tuy nhiên compiler của solidity nó khác với các ngôn ngữ khác ở 1 số chỗ. Phép chia trong solidity luôn làm tròn toward 0 ở run time, nhưng vào thời điểm compile time, expression được đánh giá là simple fraction với khoảng tử và mẫu rất lớn. VD: ((7 / 11 + 3 / 13) * 22 + 1) * 39 là 39 ở run time nhưng compile time là 705 vì compile nó tính như phân số. Dù sao thì ta cx k thấy đc điều này khi chạy CT.
+
+-> Các phép toán cộng trừ nhân chia trong solidity đều có thể overflow, vd 1 phép chia overflow là 2^-127 chia -1 sẽ ra 2^127 kiểu int thì bị tràn
+Khi tràn số, mỗi compiler các ngôn ngữ có cách xử lý khác nhau, có cái tự động mở rộng type, có cái báo lỗi. Trong solidity bản cũ nó k báo lỗi gì cả và tự động truncate, đây là TH tệ nhất vì đưa ra kết quả sai mà k báo lỗi gì. Do đó thư viện safemath ra đời để throw exception khi xảy ra lỗi. Tuy nhiên ở phiên bản mới thì solidity đã tự động báo lỗi overflow k cần thư viện. Do EVM k check overflow nên solidity ban đầu cx k check, bh check thì nó tốn nh gas hơn cho các phép tính vì phải check
+VD dùng opcode add mất 3 gas nhưng dùng 1 dãy opcode để add xong check mất đến 10 gas, dùng safemath sẽ tốn 88 gas cho phép cộng
+
+-> Phantom overflow:
+Như v ta nên báo lỗi cho kiểu overflow thông dụng như v. Còn kiểu Phantom overflow là TH kết quả trả ra vẫn trong khoảng giá trị của biến nhưng trong quá trình tính toán lại overflow.
+VD: tính 3% của x => nhưng giá trị x*3 lại quá 2**256-1 => lúc này ta k thể xử lý overflow kiểu báo lỗi như trên được vì kết quả rõ ràng trong khoảng thì bằng cách nào đó chắc chắn vẫn tính ra được kết quả đúng ít nhất là làm tròn đến phần nguyên(vì solidity k có float)
+
+-> Để giải quyết math trong solidity ta cần giải quyết 4 phép tính miễn kết quả của nó ra k bị tràn thì phải tính được bất kể quá trình tính toán có overflow miễn kết quả có giá trị đúng là phải tìm được cách tính. Khó khăn đó là solidity k hỗ trợ floating point và vấn đề overflow
+=> Các kết luận bên trên vẫn chưa giải quyết được gốc rễ vấn đề. VD sử dụng safe math nếu tràn nó sẽ báo lỗi ngay trong quá trình tính dù kết quả vẫn thuộc khoảng lưu được nên safe math vẫn chưa tốt. 
+Bh ta sẽ tìm ra 1 cách tính 4 phép tính trên ok hết miễn kết quả thỏa mãn và trả ra kết quả số nguyên làm tròn
+Còn biểu diễn floating point trong solidity để front end có thể lấy ra dùng(solidity chỉ lưu và k hiển thị cái này) là dùng UQ112x112 r
+
+
+--> Vd: Ta cần tính 3.141592653542739847% của uint x
+- Ta sẽ tạo ra hàm muldiv lý tưởng sẽ tính giá trị x*y/z làm tròn kết quả và throw nếu z = 0 or kết quả bị tràn
+function occhoMuldiv(uint x, uint y, uint z) public pure returns(uint) {
+  return mul(x*y)/z; // mul của safemath
+}
+=> Tránh phantom overflow:
+x×y÷z = (a×z+b)×(c×z+d)÷z = (a×c×z²+(a×d+b×c)×z+b×d)÷z = a×c×z+a×d+b×c+b×d÷z
+function mulDiv (uint x, uint y, uint z) public pure returns (uint) {
+  uint a = x / z; uint b = x % z; // x = a * z + b
+  uint c = y / z; uint d = y % z; // y = c * z + d
+  return a * b * z + a * d + b * c + b * d / z;
+}
+=> Chia nhỏ x, y ra để nhân không còn bị overflow nx khi mà b và d là 1 số nhỏ hơn x, y ban đầu nhưng nếu b*d vẫn bị overflow thì vẫn chưa tốt. Cách này đúng với z ≤ 2^128 vì b,d < z thì nhân vào max ^256 thì vẫn lưu được với uint. Để tránh phantom hoàn toàn, ta cần tạo ra 1 kiểu dữ liệu mới wider sao cho uint×uint->wide và wide÷uint->uint => kiểu wide ta tạo ra phải phải biểu diễn được 512 bits-> dùng 2 biến uint lưu nửa trước và nửa sau:
+function fullMul (uint x, uint y) public pure returns (uint l, uint h)
+{
+  uint xl = uint128 (x); uint xh = x >> 128;
+  uint yl = uint128 (y); uint yh = y >> 128;
+  uint xlyl = xl * yl; uint xlyh = xl * yh;
+  uint xhyl = xh * yl; uint xhyh = xh * yh;
+
+  uint ll = uint128 (xlyl);
+  uint lh = (xlyl >> 128) + uint128 (xlyh) + uint128 (xhyl);
+  uint hl = uint128 (xhyh) + (xlyh >> 128) + (xhyl >> 128);
+  uint hh = (xhyh >> 128);
+  l = ll + (lh << 128);
+  h = (lh >> 128) + hl + (hh << 128);
+  // Phép tính với bits, ta k cần hiểu sâu. Nó tách kiểu phân phối phép nhân với cộng ấy -> tách ra 4 cái và dùng dịch bit để lấy 2 bên mà tính
+}
+// Phép chia wide:uint = uint
+function fullDiv (uint l, uint h, uint z) public pure returns (uint r) {
+  require (h < z);
+  uint zShift = mostSignificantBit (z);
+  uint shiftedZ = z;
+  if (zShift <= 127) zShift = 0;
+  else
+  {
+    zShift -= 127;
+    shiftedZ = (shiftedZ - 1 >> zShift) + 1;
+  }
+  while (h > 0)
+  {
+    uint lShift = mostSignificantBit (h) + 1;
+    uint hShift = 256 - lShift;
+    uint e = ((h << hShift) + (l >> lShift)) / shiftedZ;
+    if (lShift > zShift) e <<= (lShift - zShift);
+    else e >>= (zShift - lShift);
+    r += e;
+    (uint tl, uint th) = fullMul (e, z);
+    h -= th;
+    if (tl > l) h -= 1;
+    l -= tl;
+  }
+  r += l / z;
+}
+function mostSignificantBit (uint x) public pure returns (uint r) {
+  require (x > 0);
+  if (x >= 2**128) { x >>= 128; r += 128; }
+  if (x >= 2**64) { x >>= 64; r += 64; }
+  if (x >= 2**32) { x >>= 32; r += 32; }
+  if (x >= 2**16) { x >>= 16; r += 16; }
+  if (x >= 2**8) { x >>= 8; r += 8; }
+  if (x >= 2**4) { x >>= 4; r += 4; }
+  if (x >= 2**2) { x >>= 2; r += 2; }
+  if (x >= 2**1) { x >>= 1; r += 1; }
+}
+=> k cố hiểu vì mất tg
+=> Đây là phiên bản chuẩn tốn 2,5k gas. Ta có thể rút gọn nó thành 500 gas (thôi)
+
+-> Xử lý Compound interest(lãi kép) trong solidity: 
+Sau 1 khoảng thời gian thì số tiền gốc principal sẽ cộng thêm 1 lượng lãi và chính nó lại biến thành tiền gốc để sinh lãi tiếp. Cứ cho là ta tính theo kiểu an toàn thì tất cả mọi phép tính đều phải đúng, overflow thì báo lỗi
+=> principal = add (principal, mulDiv (ratio, principal, 10^18)); => các hàm của safemath giúp 4 phép cơ bản. ratio ở đây là khoản phần trăm ăn được từ tiền gốc sau 1 period cố định, giá trị ở đây ta đã nhân lên 10^18 để kết quả được chuẩn nhât
+Cơ chế: ta k nên cộng compound sau mỗi period. Đây là cơ chế dùng nhiều trong mọi thứ khi mà lãi bị cộng vào dần lên như trong uniswap cx v. Ta chỉ cộng lãi khi nào cần sử dụng khoản lãi để tiết kiệm gas. PP này là lazy interest. Để dùng pp này, ta phải lưu lại thời điểm hiện tại(như trong uniswap là lưu lại tích của reserve), rồi khi cần dùng thì tính sao cho số lần tính là tối thiểu nhưng phải đúng, sau đó update biến lưu data sang giá trị mơi nhất. Ở đây là:
+uint currentPeriod = block.timestamp / periodLength;
+for (uint period = lastPeriod; period < currentPeriod; period++)
+  principal += ratio * principal; // Viết tạm cho nhanh
+lastPeriod = currentPeriod;
+
+=> Gặp vấn đề về vòng for, như ta đã biết dùng vòng lặp trong solidity thì phải có bound cho nó. Ở TH này thời gian trôi qua càng lâu và currentPeriod càng nhỏ thì vòng for tiến ra vô cực. Khi đến một cái lượng mà gas k thể đáp ứng thì sẽ kbh rút tiền được nx.
+=> Điều này có thể khắc phục đơn giản với thuật toán gom vòng lặp khi tính 1 cái gì đó, ta sẽ gom thành 1 công thức or làm cho vòng lặp hết nhanh hơn. Cơ chế: principal *= 1 + ratio; và nếu n = 2 thì principal *= (1 + ratio) * (1 + ratio) = 1 + (2r+r^2); -> tức là khi r sẽ thành 2r+r^2 khi thời gian tăng gấp 2 lần thời gian min. Ta cho số thời gian min là n = block.timestamp / periodLength; và n ta chia 2 thì interest tăng lên như công thức. Ta xử lý thêm chẵn lẻ:
+function compound (uint principal, uint ratio, uint n) public pure returns (uint) {
+  while (n > 0)
+    if (n % 2 == 1) {
+      principal += principal * ratio;
+      n -= 1;
+    } else {
+      ratio = 2 * ratio + ratio * ratio;
+      n /= 2;
+    }
+  return principal;
+} // Lần cuối số dư luôn là 1 và cộng vào principal
+=> Vẫn gặp vấn đề về sai số. Nếu ratio và principal nhỏ thì k sao nhưng lớn thì sai số lớn vì ta đã làm tròn ratio liên tục n lần period r, ở đây ta vẫn làm tròn principal liên tục nx, nếu các số này lớn làm cho tỉ lệ lớn thì mất mát đáng kể. Sai số ở đây sẽ cộng vào như lãi kép v.
+Nếu dùng: principal *= (1 + ratio) ** n; thì éo được vì ratio sẽ luôn = 0 do éo hỗ trợ phân số
+=> như v để tránh sai số thì phải dùng kiểu lưu fraction và phép tính pow cho fraction chứ dùng uint thì phải buộc chịu sai số
+=> kể cả bên trên vì ratio bị làm tròn liên tục khi gán bằng
+
+Giả sử ta dùng float và implement được r. Vấn đề đặt ra là dùng cho continuous compounding. Vì thời gian ta tính là 1 fixed period of time và n ta tính là uint. Thế nếu period là 1 năm thì lãi là tỉ lệ ratio, tính lượng lãi nếu mới có 1 tháng nó rút ngay or được 1 năm 1 tháng nó rút-> principal *= (1 + ratio) ** (1 / 12); là 1 tháng nhưng 1/12 là 0
+=> ta có thể dùng đơn vị nhỏ nhất của ethereum là giây và coi cứ về đơn vị giây là liên tục. Vì khó có cái nào tính đến phần mấy của giây lắm-> VD ta có 1 năm lãi suất là bnh -> tính 1s lãi suất là bnh tính như bth với n là số lần của 1s và bh nó là nguyên lớn hơn 0 r. 
+Nếu dùng uint cho ratio bằng cách quy đồng 10^18 lên(như bên trên giải thích chấp nhận sai số) thì continuous nó đã khá chuẩn với mức chia nhỏ lãi suất theo năm nhưng ta tính theo giây.
+Còn dùng float sẽ càng chuẩn hơn nx khi mà 64x64 biểu diễn nh hơn cả 18 decimals và khắc phục được lỗi làm tròn ở trên
+
+Tức là: lãi cộng dồn phải tính để tối ưu gas, vòng for quá nhiều k đủ gas, lỗi làm tròn liên tục trong loop, lỗi k vượt quá đơn vị nhỏ nhất coi là 0 
+
+--> Dùng float với ABDK64:
+function compound (uint principal, uint ratio, uint n) public pure returns (uint) 
+{
+  return ABDKMath64x64.mulu (
+    ABDKMath64x64.pow (
+      ABDKMath64x64.add (
+        ABDKMath64x64.fromUInt(1), ABDKMath64x64.divu(ratio, 10**18)
+      )
+    , n)
+  , principal);
+}
+=> ratio của ta vẫn là số nguyên và ta gọi divu là hàm chia và lưu thành số kiểu float của nó luôn.
+=> Nhờ ABDK mà ta tính nhét thành float thoải cmn mái xong tính chán chê đi và lấy kết quả thì convert lại uint là xong. Nhưng số k được quá lớn vì chia đôi lưu phần nguyên và phân sô. Có 25 hàm cơ bản:
+- Simple arithmetic:
+add (x, y) = x + y,
+sub (x, y) = x - y,
+mul (x, y) = x * y
+muli (x, int y) = int (x * y),
+mulu (x, uint y) = uint (x * y)
+div (x, y) = x / y,
+divi (int x, int y) = x / y,
+divu (uint x, uint y) = x / y
+neg (x) = -x,
+abs (x) = |x|,
+inv (x) = 1 / x.
+- Average Values:
+avg (x, y) = (x + y) / 2,
+gavg (x, y) = sqrt (x * y).
+- Power and Root:
+pow (x, uint y) = x ^ y,
+sqrt (x).
+- Exponentiation and Logarithm:
+log_2 (x),
+ln (x),
+exp_2 (x) = 2^x,
+exp (2) = e^x.
+- Conversion:
+fromInt (int x) = x,
+toInt (x) = int (x),
+fromUInt (uint x) = x,
+toUInt (x) = uint (x),
+from128x128 (f128.128 x) = x,
+to128x128 (x) = f128.128 (x)
